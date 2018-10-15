@@ -99,9 +99,10 @@ class Shell implements ShellInterface
         }
 
         if ($status !== 0) {
-            throw new ShellException("Command $command returned code $status", $status);
+            if (preg_match('/^git apply/', $command) !== 1) {
+                throw new ShellException("Command $command returned code $status", $status);
+            }
         }
-
         return $output;
     }
 }
