@@ -113,7 +113,7 @@ class Setup implements ProcessInterface
 
         try {
             $this->shell->execute(sprintf(
-                '/bin/bash -c "set -o pipefail; %s | tee -a %s"',
+                '/bin/bash -c "set -o pipefail; %s 2>&1 | tee -a %s"',
                 escapeshellcmd($command),
                 $this->fileList->getInstallUpgradeLog()
             ));
