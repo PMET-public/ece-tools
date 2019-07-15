@@ -3,19 +3,16 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Process\Deploy\InstallUpdate\Install;
 
-use Magento\MagentoCloud\Config\Environment;
-use Magento\MagentoCloud\Config\Stage\DeployInterface;
-use Magento\MagentoCloud\DB\Data\ConnectionFactory;
-use Magento\MagentoCloud\DB\Data\ConnectionInterface;
+use Magento\MagentoCloud\Filesystem\FileList;
+use Magento\MagentoCloud\Process\Deploy\InstallUpdate\Install\Setup\InstallCommandFactory;
 use Magento\MagentoCloud\Process\ProcessException;
 use Magento\MagentoCloud\Process\ProcessInterface;
 use Magento\MagentoCloud\Shell\ShellException;
 use Magento\MagentoCloud\Shell\ShellInterface;
-use Magento\MagentoCloud\Util\UrlManager;
-use Magento\MagentoCloud\Util\PasswordGenerator;
-use Magento\MagentoCloud\Filesystem\FileList;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -29,16 +26,6 @@ class Setup implements ProcessInterface
     private $logger;
 
     /**
-     * @var UrlManager
-     */
-    private $urlManager;
-
-    /**
-     * @var Environment
-     */
-    private $environment;
-
-    /**
      * @var ShellInterface
      */
     private $shell;
@@ -49,48 +36,26 @@ class Setup implements ProcessInterface
     private $fileList;
 
     /**
-     * @var PasswordGenerator
+     * @var InstallCommandFactory
      */
-    private $passwordGenerator;
-
-    /**
-     * @var DeployInterface
-     */
-    private $stageConfig;
-
-    /**
-     * @var ConnectionInterface
-     */
-    private $connectionData;
+    private $commandFactory;
 
     /**
      * @param LoggerInterface $logger
-     * @param UrlManager $urlManager
-     * @param Environment $environment
-     * @param ConnectionFactory $connectionFactory
      * @param ShellInterface $shell
-     * @param PasswordGenerator $passwordGenerator
      * @param FileList $fileList
-     * @param DeployInterface $stageConfig
+     * @param InstallCommandFactory $commandFactory
      */
     public function __construct(
         LoggerInterface $logger,
-        UrlManager $urlManager,
-        Environment $environment,
-        ConnectionFactory $connectionFactory,
         ShellInterface $shell,
-        PasswordGenerator $passwordGenerator,
         FileList $fileList,
-        DeployInterface $stageConfig
+        InstallCommandFactory $commandFactory
     ) {
         $this->logger = $logger;
-        $this->urlManager = $urlManager;
-        $this->environment = $environment;
-        $this->connectionData = $connectionFactory->create(ConnectionFactory::CONNECTION_MAIN);
         $this->shell = $shell;
-        $this->passwordGenerator = $passwordGenerator;
         $this->fileList = $fileList;
-        $this->stageConfig = $stageConfig;
+        $this->commandFactory = $commandFactory;
     }
 
     /**
@@ -100,65 +65,17 @@ class Setup implements ProcessInterface
     {
         $this->logger->info('Installing Magento.');
 
-        $command = $this->getBaseCommand();
-
-        $dbPassword = $this->connectionData->getPassword();
-        if (strlen($dbPassword)) {
-            $command .= ' --db-password=' . escapeshellarg($dbPassword);
-        }
-
-        if ($this->stageConfig->get(DeployInterface::VAR_VERBOSE_COMMANDS)) {
-            $command .= ' ' . $this->stageConfig->get(DeployInterface::VAR_VERBOSE_COMMANDS);
-        }
-
         try {
+            $installUpgradeLog = $this->fileList->getInstallUpgradeLog();
+
+            $this->shell->execute('echo \'Installation time: \'$(date) | tee -a ' . $installUpgradeLog);
             $this->shell->execute(sprintf(
                 '/bin/bash -c "set -o pipefail; %s 2>&1 | tee -a %s"',
-                escapeshellcmd($command),
-                $this->fileList->getInstallUpgradeLog()
+                escapeshellcmd($this->commandFactory->create()),
+                $installUpgradeLog
             ));
         } catch (ShellException $exception) {
             throw new ProcessException($exception->getMessage(), $exception->getCode(), $exception);
         }
-    }
-
-    /**
-     * @return string
-     */
-    private function getBaseCommand(): string
-    {
-        $urlUnsecure = $this->urlManager->getUnSecureUrls()[''];
-        $urlSecure = $this->urlManager->getSecureUrls()[''];
-
-        return 'php ./bin/magento setup:install'
-            . ' -n --session-save=db --cleanup-database'
-            . ' --currency=' . escapeshellarg($this->environment->getDefaultCurrency())
-            . ' --base-url=' . escapeshellarg($urlUnsecure)
-            . ' --base-url-secure=' . escapeshellarg($urlSecure)
-            . ' --language=' . escapeshellarg($this->environment->getAdminLocale())
-            . ' --timezone=America/Los_Angeles'
-            . ' --db-host=' . escapeshellarg($this->connectionData->getHost())
-            . ' --db-name=' . escapeshellarg($this->connectionData->getDbName())
-            . ' --db-user=' . escapeshellarg($this->connectionData->getUser())
-            . ' --backend-frontname=' . escapeshellarg($this->environment->getAdminUrl()
-                ?: Environment::DEFAULT_ADMIN_URL)
-            . ($this->environment->getAdminEmail() ? $this->getAdminCredentials() : '')
-            . ' --use-secure-admin=1 --ansi --no-interaction';
-    }
-
-    /**
-     * @return string
-     */
-    private function getAdminCredentials(): string
-    {
-        return ' --admin-user=' . escapeshellarg($this->environment->getAdminUsername()
-                ?: Environment::DEFAULT_ADMIN_NAME)
-            . ' --admin-firstname=' . escapeshellarg($this->environment->getAdminFirstname()
-                ?: Environment::DEFAULT_ADMIN_FIRSTNAME)
-            . ' --admin-lastname=' . escapeshellarg($this->environment->getAdminLastname()
-                ?: Environment::DEFAULT_ADMIN_LASTNAME)
-            . ' --admin-email=' . escapeshellarg($this->environment->getAdminEmail())
-            . ' --admin-password=' . escapeshellarg($this->environment->getAdminPassword()
-                ?: $this->passwordGenerator->generateRandomPassword());
     }
 }

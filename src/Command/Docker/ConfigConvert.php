@@ -5,6 +5,8 @@
  */
 namespace Magento\MagentoCloud\Command\Docker;
 
+use Magento\MagentoCloud\Docker\Config\Converter;
+use Magento\MagentoCloud\Filesystem\DirectoryList;
 use Magento\MagentoCloud\Filesystem\Driver\File;
 use Magento\MagentoCloud\Filesystem\FileSystemException;
 use Magento\MagentoCloud\Filesystem\SystemList;
@@ -23,14 +25,13 @@ class ConfigConvert extends Command
      * @var array Map of configuration files.
      */
     private static $map = [
-        '/docker/config.php' => '/docker/config.env',
-        '/docker/global.php' => '/docker/global.env',
+        '/config.php' => '/config.env',
     ];
 
     /**
      * @var SystemList
      */
-    private $systemList;
+    private $directoryList;
 
     /**
      * @var File
@@ -38,13 +39,20 @@ class ConfigConvert extends Command
     private $file;
 
     /**
-     * @param SystemList $directoryList
-     * @param File $file
+     * @var Converter
      */
-    public function __construct(SystemList $directoryList, File $file)
+    private $converter;
+
+    /**
+     * @param DirectoryList $directoryList
+     * @param File $file
+     * @param Converter $converter
+     */
+    public function __construct(DirectoryList $directoryList, File $file, Converter $converter)
     {
-        $this->systemList = $directoryList;
+        $this->directoryList = $directoryList;
         $this->file = $file;
+        $this->converter = $converter;
 
         parent::__construct();
     }
@@ -65,9 +73,11 @@ class ConfigConvert extends Command
      */
     public function execute(InputInterface $input, OutputInterface $output)
     {
+        $dockerRoot = $this->directoryList->getDockerRoot();
+
         foreach (self::$map as $sourcePath => $envPath) {
-            $sourcePath = $this->systemList->getMagentoRoot() . $sourcePath;
-            $envPath = $this->systemList->getMagentoRoot() . $envPath;
+            $sourcePath = $dockerRoot . $sourcePath;
+            $envPath = $dockerRoot . $envPath;
 
             if (!$this->file->isExists($sourcePath)) {
                 $sourcePath .= '.dist';
@@ -84,12 +94,11 @@ class ConfigConvert extends Command
                 $this->file->deleteFile($envPath);
             }
 
-            $content = '';
+            $content = $this->converter->convert(
+                $this->file->requireFile($sourcePath)
+            );
 
-            foreach ($this->file->requireFile($sourcePath) as $variable => $value) {
-                $formattedValue = is_bool($value) ? var_export($value, true) : $value;
-                $content .= $variable . '=' . $formattedValue . PHP_EOL;
-            }
+            $content = implode(PHP_EOL, $content);
 
             $this->file->filePutContents($envPath, $content);
         }

@@ -64,7 +64,12 @@ class Reader implements ReaderInterface
 
         $config = [
             'type' => $appConfig['type'],
-            'services' => []
+            'crons' => $appConfig['crons'] ?? [],
+            'services' => [],
+            'runtime' => [
+                'extensions' => $appConfig['runtime']['extensions'] ?? [],
+                'disabled_extensions' => $appConfig['runtime']['disabled_extensions'] ?? []
+            ]
         ];
 
         foreach ($appConfig['relationships'] as $constraint) {

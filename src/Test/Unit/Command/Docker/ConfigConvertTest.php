@@ -6,8 +6,10 @@
 namespace Magento\MagentoCloud\Test\Unit\Command\Docker;
 
 use Magento\MagentoCloud\Command\Docker\ConfigConvert;
+use Magento\MagentoCloud\Docker\Config\Converter;
+use Magento\MagentoCloud\Filesystem\DirectoryList;
 use Magento\MagentoCloud\Filesystem\Driver\File;
-use Magento\MagentoCloud\Filesystem\SystemList;
+use Magento\MagentoCloud\Filesystem\FileSystemException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\InputInterface;
@@ -24,52 +26,60 @@ class ConfigConvertTest extends TestCase
     private $command;
 
     /**
-     * @var SystemList|MockObject
-     */
-    private $systemListMock;
-
-    /**
      * @var File|MockObject
      */
     private $fileMock;
+
+    /**
+     * @var Converter|MockObject
+     */
+    private $converterMock;
+
+    /**
+     * @var DirectoryList|MockObject
+     */
+    private $directoryListMock;
 
     /**
      * @inheritdoc
      */
     protected function setUp()
     {
-        $this->systemListMock = $this->createMock(SystemList::class);
+        $this->directoryListMock = $this->createMock(DirectoryList::class);
         $this->fileMock = $this->createMock(File::class);
+        $this->converterMock = $this->createMock(Converter::class);
 
         $this->command = new ConfigConvert(
-            $this->systemListMock,
-            $this->fileMock
+            $this->directoryListMock,
+            $this->fileMock,
+            $this->converterMock
         );
     }
 
+    /**
+     * @throws FileSystemException
+     */
     public function testExecute()
     {
+        /** @var InputInterface|MockObject $inputMock */
         $inputMock = $this->getMockForAbstractClass(InputInterface::class);
+        /** @var OutputInterface|MockObject $outputMock */
         $outputMock = $this->getMockForAbstractClass(OutputInterface::class);
 
-        $this->systemListMock->expects($this->any())
-            ->method('getMagentoRoot')
-            ->willReturn('magento_root');
-        $this->fileMock->expects($this->exactly(6))
+        $this->directoryListMock->method('getDockerRoot')
+            ->willReturn('docker_root');
+        $this->fileMock->expects($this->exactly(3))
             ->method('isExists')
             ->willReturnMap([
-                ['magento_root/docker/config.php', true],
-                ['magento_root/docker/config.php', true],
-                ['magento_root/docker/config.env', false],
-                ['magento_root/docker/global.php', true],
-                ['magento_root/docker/global.php', true],
-                ['magento_root/docker/global.env', false],
+                ['docker_root/config.php', true],
+                ['docker_root/config.php', true],
+                ['docker_root/config.env', false]
             ]);
-        $this->fileMock->expects($this->exactly(2))
+        $this->fileMock->expects($this->once())
             ->method('requireFile')
             ->willReturnMap([
                 [
-                    'magento_root/docker/config.php',
+                    'docker_root/config.php',
                     [
                         'MAGENTO_CLOUD_VARIABLES' => base64_encode(json_encode(
                             [
@@ -80,61 +90,49 @@ class ConfigConvertTest extends TestCase
                             ]
                         )),
                     ],
-                ],
-                [
-                    'magento_root/docker/global.php',
-                    [
-                        'MAGENTO_RUN_MODE' => 'production',
-                        'DEBUG' => false,
-                        'ENABLE_SENDMAIL' => true,
-                        'PHP_ENABLE_XDEBUG' => true,
-                    ],
-                ],
+                ]
             ]);
-        $this->fileMock->expects($this->exactly(2))
+        $this->converterMock->expects($this->once())
+            ->method('convert')
+            ->willReturn([
+                'MAGENTO_CLOUD_VARIABLES=eyJBRE1JTl9FTUFJTCI6InRlc3Qy'
+            ]);
+        $this->fileMock->expects($this->once())
             ->method('filePutContents')
             ->withConsecutive(
                 [
-                    'magento_root/docker/config.env',
+                    'docker_root/config.env',
                     $this->stringStartsWith('MAGENTO_CLOUD_VARIABLES=eyJBRE1JTl9FTUFJTCI6InRlc3Qy'),
-                ],
-                [
-                    'magento_root/docker/global.env',
-                    implode(PHP_EOL, [
-                        'MAGENTO_RUN_MODE=production',
-                        'DEBUG=false',
-                        'ENABLE_SENDMAIL=true',
-                        'PHP_ENABLE_XDEBUG=true',
-                    ]) . PHP_EOL,
                 ]
             );
 
         $this->command->execute($inputMock, $outputMock);
     }
 
+    /**
+     * @throws FileSystemException
+     */
     public function testExecuteUsingDist()
     {
+        /** @var InputInterface|MockObject $inputMock */
         $inputMock = $this->getMockForAbstractClass(InputInterface::class);
+        /** @var OutputInterface|MockObject $outputMock */
         $outputMock = $this->getMockForAbstractClass(OutputInterface::class);
 
-        $this->systemListMock->expects($this->any())
-            ->method('getMagentoRoot')
-            ->willReturn('magento_root');
-        $this->fileMock->expects($this->exactly(6))
+        $this->directoryListMock->method('getDockerRoot')
+            ->willReturn('docker_root');
+        $this->fileMock->expects($this->exactly(3))
             ->method('isExists')
             ->willReturnMap([
-                ['magento_root/docker/config.php', false],
-                ['magento_root/docker/config.php.dist', true],
-                ['magento_root/docker/config.env', false],
-                ['magento_root/docker/global.php', false],
-                ['magento_root/docker/global.php.dist', true],
-                ['magento_root/docker/global.env', false],
+                ['docker_root/config.php', false],
+                ['docker_root/config.php.dist', true],
+                ['docker_root/config.env', false],
             ]);
-        $this->fileMock->expects($this->exactly(2))
+        $this->fileMock->expects($this->once())
             ->method('requireFile')
             ->willReturnMap([
                 [
-                    'magento_root/docker/config.php.dist',
+                    'docker_root/config.php.dist',
                     [
                         'MAGENTO_CLOUD_VARIABLES' => base64_encode(json_encode(
                             [
@@ -146,59 +144,48 @@ class ConfigConvertTest extends TestCase
                         )),
                     ],
                 ],
-                [
-
-                    'magento_root/docker/global.php.dist',
-                    [
-                        'MAGENTO_RUN_MODE' => 'production',
-                        'DEBUG' => false,
-                        'PHP_ENABLE_XDEBUG' => true,
-                    ],
-                ],
             ]);
-        $this->fileMock->expects($this->exactly(2))
+        $this->converterMock->expects($this->once())
+            ->method('convert')
+            ->willReturn([
+                'MAGENTO_CLOUD_VARIABLES=eyJBRE1JTl9FTUFJT'
+            ]);
+        $this->fileMock->expects($this->once())
             ->method('filePutContents')
             ->withConsecutive(
                 [
-                    'magento_root/docker/config.env',
+                    'docker_root/config.env',
                     $this->stringStartsWith('MAGENTO_CLOUD_VARIABLES=eyJBRE1JTl9FTUFJT'),
-                ],
-                [
-                    'magento_root/docker/global.env',
-                    implode(PHP_EOL, [
-                        'MAGENTO_RUN_MODE=production',
-                        'DEBUG=false',
-                        'PHP_ENABLE_XDEBUG=true',
-                    ]) . PHP_EOL,
                 ]
             );
 
         $this->command->execute($inputMock, $outputMock);
     }
 
+    /**
+     * @throws FileSystemException
+     */
     public function testExecuteUsingDistWithClean()
     {
+        /** @var InputInterface|MockObject $inputMock */
         $inputMock = $this->getMockForAbstractClass(InputInterface::class);
+        /** @var OutputInterface|MockObject $outputMock */
         $outputMock = $this->getMockForAbstractClass(OutputInterface::class);
 
-        $this->systemListMock->expects($this->any())
-            ->method('getMagentoRoot')
-            ->willReturn('magento_root');
-        $this->fileMock->expects($this->exactly(6))
+        $this->directoryListMock->method('getDockerRoot')
+            ->willReturn('docker_root');
+        $this->fileMock->expects($this->exactly(3))
             ->method('isExists')
             ->willReturnMap([
-                ['magento_root/docker/config.php', false],
-                ['magento_root/docker/config.php.dist', true],
-                ['magento_root/docker/config.env', true],
-                ['magento_root/docker/global.php', false],
-                ['magento_root/docker/global.php.dist', true],
-                ['magento_root/docker/global.env', true],
+                ['docker_root/config.php', false],
+                ['docker_root/config.php.dist', true],
+                ['docker_root/config.env', true],
             ]);
-        $this->fileMock->expects($this->exactly(2))
+        $this->fileMock->expects($this->once())
             ->method('requireFile')
             ->willReturnMap([
                 [
-                    'magento_root/docker/config.php.dist',
+                    'docker_root/config.php.dist',
                     [
                         'MAGENTO_CLOUD_VARIABLES' => base64_encode(json_encode(
                             [
@@ -209,38 +196,25 @@ class ConfigConvertTest extends TestCase
                             ]
                         )),
                     ],
-                ],
-                [
-
-                    'magento_root/docker/global.php.dist',
-                    [
-                        'MAGENTO_RUN_MODE' => 'production',
-                        'DEBUG' => false,
-                        'PHP_ENABLE_XDEBUG' => true,
-                    ],
-                ],
+                ]
             ]);
-        $this->fileMock->expects($this->exactly(2))
+        $this->fileMock->expects($this->once())
             ->method('filePutContents')
             ->withConsecutive(
                 [
-                    'magento_root/docker/config.env',
+                    'docker_root/config.env',
                     $this->stringStartsWith('MAGENTO_CLOUD_VARIABLES=eyJBRE1JTl9FTUFJT'),
-                ],
-                [
-                    'magento_root/docker/global.env',
-                    implode(PHP_EOL, [
-                        'MAGENTO_RUN_MODE=production',
-                        'DEBUG=false',
-                        'PHP_ENABLE_XDEBUG=true',
-                    ]) . PHP_EOL,
                 ]
             );
-        $this->fileMock->expects($this->exactly(2))
+        $this->converterMock->expects($this->once())
+            ->method('convert')
+            ->willReturn([
+                'MAGENTO_CLOUD_VARIABLES=eyJBRE1JTl9FTUFJTCI6InRlc3Qy'
+            ]);
+        $this->fileMock->expects($this->once())
             ->method('deleteFile')
             ->withConsecutive(
-                ['magento_root/docker/config.env'],
-                ['magento_root/docker/global.env']
+                ['docker_root/config.env']
             );
 
         $this->command->execute($inputMock, $outputMock);
@@ -248,21 +222,23 @@ class ConfigConvertTest extends TestCase
 
     /**
      * @expectedException  \Magento\MagentoCloud\Filesystem\FileSystemException
-     * @expectedExceptionMessage Source file magento_root/docker/config.php.dist does not exists
+     * @expectedExceptionMessage Source file docker_root/config.php.dist does not exists
+     * @throws FileSystemException
      */
     public function testExecuteNoSource()
     {
+        /** @var InputInterface|MockObject $inputMock */
         $inputMock = $this->getMockForAbstractClass(InputInterface::class);
+        /** @var OutputInterface|MockObject $outputMock */
         $outputMock = $this->getMockForAbstractClass(OutputInterface::class);
 
-        $this->systemListMock->expects($this->any())
-            ->method('getMagentoRoot')
-            ->willReturn('magento_root');
+        $this->directoryListMock->method('getDockerRoot')
+            ->willReturn('docker_root');
         $this->fileMock->expects($this->exactly(2))
             ->method('isExists')
             ->willReturnMap([
-                ['magento_root/docker/config.php', false],
-                ['magento_root/docker/config.php.dist', false],
+                ['docker_root/config.php', false],
+                ['docker_root/config.php.dist', false],
             ]);
 
         $this->command->execute($inputMock, $outputMock);
