@@ -99,7 +99,7 @@ class Setup implements ProcessInterface
 
             $this->shell->execute('echo \'Updating time: \'$(date) | tee -a ' . $installUpgradeLog);
             $this->shell->execute(sprintf(
-                '/bin/bash -c "set -o pipefail; %s | tee -a %s"',
+                '/bin/bash -c "set -o pipefail; %s 2>&1 | tee -a %s"',
                 'php ./bin/magento setup:upgrade --keep-generated --ansi --no-interaction ' . $verbosityLevel,
                 $installUpgradeLog
             ));
