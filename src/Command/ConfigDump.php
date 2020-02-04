@@ -9,10 +9,9 @@ namespace Magento\MagentoCloud\Command;
 
 use Magento\MagentoCloud\App\GenericException;
 use Magento\MagentoCloud\Command\ConfigDump\Generate;
-use Magento\MagentoCloud\Config\Deploy\Reader;
-use Magento\MagentoCloud\Config\Deploy\Writer;
+use Magento\MagentoCloud\Config\Magento\Env\ReaderInterface;
+use Magento\MagentoCloud\Config\Magento\Env\WriterInterface;
 use Magento\MagentoCloud\Package\MagentoVersion;
-use Magento\MagentoCloud\Process\ProcessInterface;
 use Magento\MagentoCloud\Shell\ShellFactory;
 use Magento\MagentoCloud\Shell\ShellInterface;
 use Psr\Log\LoggerInterface;
@@ -22,6 +21,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * CLI command for dumping SCD related config.
+ *
+ * @api
  */
 class ConfigDump extends Command
 {
@@ -38,17 +39,17 @@ class ConfigDump extends Command
     private $shell;
 
     /**
-     * @var ProcessInterface
+     * @var Generate
      */
     private $generate;
 
     /**
-     * @var Reader
+     * @var ReaderInterface
      */
     private $reader;
 
     /**
-     * @var Writer
+     * @var WriterInterface
      */
     private $writer;
 
@@ -61,16 +62,16 @@ class ConfigDump extends Command
      * @param LoggerInterface $logger
      * @param ShellFactory $shellFactory
      * @param Generate $generate
-     * @param Reader $reader
-     * @param Writer $writer
+     * @param ReaderInterface $reader
+     * @param WriterInterface $writer
      * @param MagentoVersion $magentoVersion
      */
     public function __construct(
         LoggerInterface $logger,
         ShellFactory $shellFactory,
         Generate $generate,
-        Reader $reader,
-        Writer $writer,
+        ReaderInterface $reader,
+        WriterInterface $writer,
         MagentoVersion $magentoVersion
     ) {
         $this->logger = $logger;
@@ -118,7 +119,7 @@ class ConfigDump extends Command
             if (!$this->magentoVersion->isGreaterOrEqual('2.2')) {
                 $this->logger->info('Dump completed.');
 
-                return;
+                return 0;
             }
 
             $this->shell->execute('app:config:import');

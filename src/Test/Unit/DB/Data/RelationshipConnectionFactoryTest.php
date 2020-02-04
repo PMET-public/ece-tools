@@ -3,10 +3,12 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\DB\Data;
 
-use Magento\MagentoCloud\Config\Environment;
 use Magento\MagentoCloud\DB\Data\RelationshipConnectionFactory;
+use Magento\MagentoCloud\Service\Database;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -21,48 +23,45 @@ class RelationshipConnectionFactoryTest extends TestCase
     private $factory;
 
     /**
-     * @var Environment|MockObject
+     * @var Database|MockObject
      */
-    private $environmentMock;
+    private $databaseMock;
 
     /**
      * @inheritdoc
      */
     protected function setUp()
     {
-        $this->environmentMock = $this->createMock(Environment::class);
+        $this->databaseMock = $this->createMock(Database::class);
 
         $this->factory = new RelationshipConnectionFactory(
-            $this->environmentMock
+            $this->databaseMock
         );
     }
 
     public function testCreateMain()
     {
-        $this->environmentMock->expects($this->once())
-            ->method('getRelationship')
-            ->with('database')
-            ->willReturn([[]]);
+        $this->databaseMock->expects($this->once())
+            ->method('getConfiguration')
+            ->willReturn([]);
 
         $this->factory->create(RelationshipConnectionFactory::CONNECTION_MAIN);
     }
 
     public function testCreateSlave()
     {
-        $this->environmentMock->expects($this->once())
-            ->method('getRelationship')
-            ->with('database-slave')
-            ->willReturn([[]]);
+        $this->databaseMock->expects($this->once())
+            ->method('getSlaveConfiguration')
+            ->willReturn([]);
 
         $this->factory->create(RelationshipConnectionFactory::CONNECTION_SLAVE);
     }
 
-    /**
-     * @expectedException \RuntimeException
-     * @expectedExceptionMessage Connection with type dummy doesn't exist
-     */
     public function testCreateWithException()
     {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Connection with type dummy doesn\'t exist');
+
         $this->factory->create('dummy');
     }
 }

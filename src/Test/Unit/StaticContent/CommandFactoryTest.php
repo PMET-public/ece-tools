@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\StaticContent;
 
 use Magento\MagentoCloud\Config\GlobalSection;
@@ -10,6 +12,7 @@ use Magento\MagentoCloud\StaticContent\CommandFactory;
 use Magento\MagentoCloud\StaticContent\OptionInterface;
 use Magento\MagentoCloud\Package\MagentoVersion;
 use Magento\MagentoCloud\StaticContent\ThemeResolver;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use PHPUnit_Framework_MockObject_MockObject as Mock;
 use Psr\Log\LoggerInterface;
@@ -73,7 +76,7 @@ class CommandFactoryTest extends TestCase
         $this->magentoVersionMock
             ->expects($this->exactly(2))
             ->method('satisfies')
-            ->willReturn(!$useScdStrategy);
+            ->willReturn($useScdStrategy);
         $this->themeResolverMock
             ->expects($this->exactly(count($optionConfig['excluded_themes'])))
             ->method('resolve')
@@ -82,7 +85,10 @@ class CommandFactoryTest extends TestCase
 
         $this->assertEquals(
             $expected,
-            $this->commandFactory->create($this->createOption($optionConfig, (int)$useScdStrategy))
+            $this->commandFactory->create(
+                $this->createOption($optionConfig, (int)$useScdStrategy),
+                $optionConfig['excluded_themes']
+            )
         );
     }
 
@@ -101,6 +107,7 @@ class CommandFactoryTest extends TestCase
                     'locales' => ['en_US'],
                     'is_force' => true,
                     'verbosity_level' => '-v',
+                    'max_execution_time' => null,
                 ],
                 true,
                 'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -f -s quick '
@@ -115,10 +122,11 @@ class CommandFactoryTest extends TestCase
                     'locales' => ['en_US', 'de_DE'],
                     'is_force' => false,
                     'verbosity_level' => '-v',
+                    'max_execution_time' => 1000,
                 ],
                 true,
                 'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                . '-v --jobs 1 --exclude-theme theme1 en_US de_DE',
+                . '-v --jobs 1 --max-execution-time 1000 --exclude-theme theme1 en_US de_DE',
             ],
             [
                 [
@@ -143,6 +151,7 @@ class CommandFactoryTest extends TestCase
                     'locales' => ['en_US', 'de_DE'],
                     'is_force' => false,
                     'verbosity_level' => '-v',
+                    'max_execution_time' => 1000,
                 ],
                 false,
                 'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -v --jobs 1 '
@@ -195,9 +204,6 @@ class CommandFactoryTest extends TestCase
                 ->method('getThreadCount')
                 ->willReturn($optionConfig['thread_count']);
         }
-        $optionMock->expects($this->once())
-            ->method('getExcludedThemes')
-            ->willReturn($optionConfig['excluded_themes']);
         $optionMock->expects($this->exactly($getStrategyTimes))
             ->method('getStrategy')
             ->willReturn($optionConfig['strategy']);
@@ -210,6 +216,9 @@ class CommandFactoryTest extends TestCase
         $optionMock->expects($this->once())
             ->method('getVerbosityLevel')
             ->willReturn($optionConfig['verbosity_level']);
+        $optionMock->expects($this->exactly($getStrategyTimes))
+            ->method('getMaxExecutionTime')
+            ->willReturn($optionConfig['max_execution_time'] ?? null);
 
         return $optionMock;
     }
@@ -219,15 +228,11 @@ class CommandFactoryTest extends TestCase
      * @param array $matrix
      * @param array $expected
      * @dataProvider matrixDataProvider
-     * @dataProvider matrixResolveDataProvider
      */
     public function testMatrix(array $optionConfig, array $matrix, array $expected)
     {
+        /** @var OptionInterface|MockObject $optionMock */
         $optionMock = $this->getMockForAbstractClass(OptionInterface::class);
-
-        $optionMock->expects($this->once())
-            ->method('getExcludedThemes')
-            ->willReturn($optionConfig['excluded_themes']);
         $optionMock->expects($this->any())
             ->method('getStrategy')
             ->willReturn($optionConfig['strategy']);
@@ -240,6 +245,10 @@ class CommandFactoryTest extends TestCase
         $optionMock->expects($this->any())
             ->method('getVerbosityLevel')
             ->willReturn($optionConfig['verbosity_level']);
+        $this->magentoVersionMock
+            ->expects($this->any())
+            ->method('satisfies')
+            ->willReturn(true);
         $this->themeResolverMock
             ->expects($this->exactly(count($optionConfig['resolve_pass'])))
             ->method('resolve')
@@ -261,30 +270,28 @@ class CommandFactoryTest extends TestCase
             [
                 [
                     'thread_count' => 3,
-                    'excluded_themes' => ['theme1', 'theme2'],
                     'strategy' => 'quick',
                     'locales' => ['en_US'],
                     'is_force' => true,
                     'verbosity_level' => '-v',
-                    'resolve_return' => ['theme1', 'theme2'],
-                    'resolve_pass' => [['theme1'], ['theme2']],
+                    'resolve_return' => [],
+                    'resolve_pass' => [],
                 ],
                 [],
                 [
                     'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -f -s quick '
-                    . '-v --exclude-theme theme1 --exclude-theme theme2 en_US',
+                    . '-v en_US',
                 ],
             ],
             [
                 [
                     'thread_count' => 1,
-                    'excluded_themes' => ['theme1'],
                     'strategy' => 'quick',
                     'locales' => ['en_US', 'de_DE'],
                     'is_force' => false,
                     'verbosity_level' => '-v',
-                    'resolve_return' => ['theme1', 'Magento/backend'],
-                    'resolve_pass' => [['theme1'], ['Magento/backend']],
+                    'resolve_return' => ['Magento/backend'],
+                    'resolve_pass' => [['Magento/backend']],
                 ],
                 [
                     'Magento/backend' => [
@@ -293,38 +300,36 @@ class CommandFactoryTest extends TestCase
                 ],
                 [
                     'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                    . '-v --exclude-theme theme1 --exclude-theme Magento/backend en_US de_DE',
+                    . '-v --exclude-theme Magento/backend en_US de_DE',
                 ],
             ],
             [
                 [
                     'thread_count' => 1,
-                    'excluded_themes' => ['theme1'],
                     'strategy' => 'quick',
                     'locales' => ['en_US', 'de_DE'],
                     'is_force' => false,
                     'verbosity_level' => '-v',
-                    'resolve_return' => ['theme1', 'Magento/backend'],
-                    'resolve_pass' => [['theme1'], ['Magento/backend']],
+                    'resolve_return' => ['Magento/backend'],
+                    'resolve_pass' => [['Magento/backend']],
                 ],
                 [
                     'Magento/backend' => null,
                 ],
                 [
                     'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                    . '-v --exclude-theme theme1 --exclude-theme Magento/backend en_US de_DE',
+                    . '-v --exclude-theme Magento/backend en_US de_DE',
                 ],
             ],
             [
                 [
                     'thread_count' => 1,
-                    'excluded_themes' => ['theme1'],
                     'strategy' => 'quick',
                     'locales' => ['en_US', 'de_DE'],
                     'is_force' => false,
                     'verbosity_level' => '-v',
-                    'resolve_return' => ['theme1', 'Magento/backend', 'Magento/backend'],
-                    'resolve_pass' => [['theme1'], ['Magento/backend'], ['Magento/backend']],
+                    'resolve_return' => ['Magento/backend', 'Magento/backend'],
+                    'resolve_pass' => [['Magento/backend'], ['Magento/backend']],
                 ],
                 [
                     'Magento/backend' => [
@@ -333,82 +338,7 @@ class CommandFactoryTest extends TestCase
                 ],
                 [
                     'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                    . '-v --exclude-theme theme1 --exclude-theme Magento/backend en_US de_DE',
-                    'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                    . '-v --theme Magento/backend en_US fr_FR af_ZA',
-                ],
-            ],
-        ];
-    }
-
-    public function matrixResolveDataProvider()
-    {
-        return [
-            [
-                [
-                    'thread_count' => 1,
-                    'excluded_themes' => ['Theme1'],
-                    'strategy' => 'quick',
-                    'locales' => ['en_US', 'de_DE'],
-                    'is_force' => false,
-                    'verbosity_level' => '-v',
-                    'resolve_return' => ['theme1', 'Magento/backend', 'Magento/backend'],
-                    'resolve_pass' => [['Theme1'], ['Magento/backend'], ['Magento/backend']],
-                ],
-                [
-                    'Magento/backend' => [
-                        'language' => ['en_US', 'fr_FR', 'af_ZA'],
-                    ],
-                ],
-                [
-                    'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                    . '-v --exclude-theme theme1 --exclude-theme Magento/backend en_US de_DE',
-                    'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                    . '-v --theme Magento/backend en_US fr_FR af_ZA',
-                ],
-            ],
-            [
-                [
-                    'thread_count' => 1,
-                    'excluded_themes' => ['theme1'],
-                    'strategy' => 'quick',
-                    'locales' => ['en_US', 'de_DE'],
-                    'is_force' => false,
-                    'verbosity_level' => '-v',
-                    'resolve_return' => ['theme1', 'Magento/backend', 'Magento/backend'],
-                    'resolve_pass' => [['theme1'], ['Magento/Backend'], ['Magento/Backend']],
-                ],
-                [
-                    'Magento/Backend' => [
-                        'language' => ['en_US', 'fr_FR', 'af_ZA'],
-                    ],
-                ],
-                [
-                    'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                    . '-v --exclude-theme theme1 --exclude-theme Magento/backend en_US de_DE',
-                    'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                    . '-v --theme Magento/backend en_US fr_FR af_ZA',
-                ],
-            ],
-            [
-                [
-                    'thread_count' => 1,
-                    'excluded_themes' => ['Theme1'],
-                    'strategy' => 'quick',
-                    'locales' => ['en_US', 'de_DE'],
-                    'is_force' => false,
-                    'verbosity_level' => '-v',
-                    'resolve_return' => ['theme1', 'Magento/backend', 'Magento/backend'],
-                    'resolve_pass' => [['Theme1'], ['Magento/Backend'], ['Magento/Backend']],
-                ],
-                [
-                    'Magento/Backend' => [
-                        'language' => ['en_US', 'fr_FR', 'af_ZA'],
-                    ],
-                ],
-                [
-                    'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-                    . '-v --exclude-theme theme1 --exclude-theme Magento/backend en_US de_DE',
+                    . '-v --exclude-theme Magento/backend en_US de_DE',
                     'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
                     . '-v --theme Magento/backend en_US fr_FR af_ZA',
                 ],
@@ -418,9 +348,9 @@ class CommandFactoryTest extends TestCase
 
     public function testCreateNoResolve()
     {
+        $excludedThemes = ['Theme1'];
         $optionConfig = [
             'thread_count' => 1,
-            'excluded_themes' => ['Theme1'],
             'resolve_pass' =>  [['Theme1']],
             'resolve_return' => [''],
             'strategy' => 'quick',
@@ -434,16 +364,16 @@ class CommandFactoryTest extends TestCase
         $this->magentoVersionMock
             ->expects($this->exactly(2))
             ->method('satisfies')
-            ->willReturn(!$useScdStrategy);
+            ->willReturn($useScdStrategy);
         $this->themeResolverMock
-            ->expects($this->exactly(count($optionConfig['excluded_themes'])))
+            ->expects($this->exactly($this->count($excludedThemes)))
             ->method('resolve')
-            ->withConsecutive(...array_chunk($optionConfig['excluded_themes'], 1))
+            ->withConsecutive(...array_chunk($excludedThemes, 1))
             ->willReturnOnConsecutiveCalls(...$optionConfig['resolve_return']);
 
         $this->assertEquals(
             $expected,
-            $this->commandFactory->create($this->createOption($optionConfig, (int)$useScdStrategy))
+            $this->commandFactory->create($this->createOption($optionConfig, (int)$useScdStrategy), $excludedThemes)
         );
     }
 
@@ -455,13 +385,11 @@ class CommandFactoryTest extends TestCase
             ],
         ];
         $expected =[ 'php ./bin/magento setup:static-content:deploy --ansi --no-interaction -s quick '
-            . '-v --exclude-theme theme1 en_US de_DE' ];
+            . '-v en_US de_DE' ];
 
+        /** @var OptionInterface|MockObject $optionMock */
         $optionMock = $this->getMockForAbstractClass(OptionInterface::class);
 
-        $optionMock->expects($this->once())
-            ->method('getExcludedThemes')
-            ->willReturn(['theme1']);
         $optionMock->expects($this->any())
             ->method('getStrategy')
             ->willReturn('quick');
@@ -474,16 +402,18 @@ class CommandFactoryTest extends TestCase
         $optionMock->expects($this->any())
             ->method('getVerbosityLevel')
             ->willReturn('-v');
+        $this->magentoVersionMock
+            ->expects($this->exactly(2))
+            ->method('satisfies')
+            ->willReturn(true);
         $this->themeResolverMock
-            ->expects($this->exactly(3))
+            ->expects($this->exactly(2))
             ->method('resolve')
             ->withConsecutive(
-                ['theme1'],
                 ['Magento/Backend'],
                 ['Magento/Backend']
             )
             ->willReturnOnConsecutiveCalls(
-                'theme1',
                 '',
                 ''
             );

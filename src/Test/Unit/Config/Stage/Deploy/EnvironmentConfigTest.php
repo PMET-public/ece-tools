@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Config\Stage\Deploy;
 
 use Magento\MagentoCloud\Config\Environment;
@@ -26,6 +28,9 @@ class EnvironmentConfigTest extends TestCase
      */
     private $environmentMock;
 
+    /**
+     * @inheritDoc
+     */
     protected function setUp()
     {
         $this->environmentMock = $this->createMock(Environment::class);
@@ -40,8 +45,7 @@ class EnvironmentConfigTest extends TestCase
      */
     public function testGetAll(array $expectedVariables, array $envVariables)
     {
-        $this->environmentMock->expects($this->any())
-            ->method('getVariables')
+        $this->environmentMock->method('getVariables')
             ->willReturn($envVariables);
 
         $this->assertSame(
@@ -50,7 +54,10 @@ class EnvironmentConfigTest extends TestCase
         );
     }
 
-    public function getAllDataProvider()
+    /**
+     * @return array
+     */
+    public function getAllDataProvider(): array
     {
         return [
             [
@@ -70,20 +77,12 @@ class EnvironmentConfigTest extends TestCase
                 [DeployInterface::VAR_CLEAN_STATIC_FILES => Environment::VAL_DISABLED]
             ],
             [
-                [DeployInterface::VAR_STATIC_CONTENT_SYMLINK => false],
-                [DeployInterface::VAR_STATIC_CONTENT_SYMLINK => Environment::VAL_DISABLED]
-            ],
-            [
                 [DeployInterface::VAR_UPDATE_URLS => false],
                 [DeployInterface::VAR_UPDATE_URLS => Environment::VAL_DISABLED]
             ],
             [
                 [DeployInterface::VAR_GENERATED_CODE_SYMLINK => false],
                 [DeployInterface::VAR_GENERATED_CODE_SYMLINK => Environment::VAL_DISABLED]
-            ],
-            [
-                [DeployInterface::VAR_SCD_EXCLUDE_THEMES => 'theme'],
-                ['STATIC_CONTENT_EXCLUDE_THEMES' => 'theme']
             ],
             [
                 [DeployInterface::VAR_SCD_COMPRESSION_LEVEL => 3],
@@ -102,71 +101,8 @@ class EnvironmentConfigTest extends TestCase
                 [DeployInterface::VAR_SCD_COMPRESSION_LEVEL => '10']
             ],
             [
-                [DeployInterface::VAR_SCD_THREADS => 3],
-                [DeployInterface::VAR_STATIC_CONTENT_THREADS => '3']
-            ],
-            [
-                [DeployInterface::VAR_SCD_THREADS => 0],
-                [DeployInterface::VAR_STATIC_CONTENT_THREADS => '0']
-            ],
-            [
                 [],
-                [DeployInterface::VAR_STATIC_CONTENT_THREADS => 'test']
-            ],
-            [
-                [DeployInterface::VAR_SKIP_SCD => true],
-                [DeployInterface::VAR_DO_DEPLOY_STATIC_CONTENT => Environment::VAL_DISABLED]
-            ],
-            [
-                [DeployInterface::VAR_SKIP_SCD => false],
-                [DeployInterface::VAR_DO_DEPLOY_STATIC_CONTENT => 0]
-            ],
-        ];
-    }
-
-    /**
-     * @param string $staticContentThreads
-     * @param array $expectedResult
-     * @dataProvider getEnvScdDataProvider
-     */
-    public function testGetEnvScd(string $staticContentThreads, array $expectedResult)
-    {
-        $this->environmentMock->expects($this->any())
-            ->method('getVariables')
-            ->willReturn([]);
-        $this->environmentMock->expects($this->once())
-            ->method('getEnv')
-            ->with(DeployInterface::VAR_STATIC_CONTENT_THREADS)
-            ->willReturn($staticContentThreads);
-
-        $this->assertSame($expectedResult, $this->environmentConfig->getAll());
-    }
-
-    /**
-     * @return array
-     */
-    public function getEnvScdDataProvider(): array
-    {
-        return [
-            [
-                '5',
-                ['SCD_THREADS' => 5]
-            ],
-            [
-                '0',
-                ['SCD_THREADS' => 0]
-            ],
-            [
-                'test',
-                []
-            ],
-            [
-                '',
-                []
-            ],
-            [
-                false,
-                []
+                [DeployInterface::VAR_VERBOSE_COMMANDS => 'wrong_value']
             ]
         ];
     }

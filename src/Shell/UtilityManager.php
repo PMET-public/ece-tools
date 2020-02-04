@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Shell;
 
 /**
@@ -65,8 +67,8 @@ class UtilityManager
 
             foreach ($list as $name) {
                 try {
-                    $output = $this->shell->execute('which ' . $name);
-                    $this->utilities[$name] = implode(PHP_EOL, $output);
+                    $process = $this->shell->execute('which ' . $name);
+                    $this->utilities[$name] = explode(PHP_EOL, $process->getOutput())[0];
                 } catch (\Exception $exception) {
                     throw new \RuntimeException(sprintf(
                         'Required utility %s was not found',

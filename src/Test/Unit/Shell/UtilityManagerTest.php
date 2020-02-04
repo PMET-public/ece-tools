@@ -3,8 +3,11 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Shell;
 
+use Magento\MagentoCloud\Shell\ProcessInterface;
 use Magento\MagentoCloud\Shell\ShellInterface;
 use Magento\MagentoCloud\Shell\UtilityManager;
 use PHPUnit\Framework\TestCase;
@@ -39,11 +42,19 @@ class UtilityManagerTest extends TestCase
 
     public function testGet()
     {
+        $processMock1 = $this->getMockForAbstractClass(ProcessInterface::class);
+        $processMock1->expects($this->once())
+            ->method('getOutput')
+            ->willReturn("/usr/bash\n/usr/bin/bash");
+        $processMock2 = $this->getMockForAbstractClass(ProcessInterface::class);
+        $processMock2->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('/usr/timeout');
         $this->shellMock->expects($this->any())
             ->method('execute')
             ->willReturnMap([
-                ['which ' . UtilityManager::UTILITY_BASH, [], ['/usr/bash']],
-                ['which ' . UtilityManager::UTILITY_TIMEOUT, [], ['/usr/timeout']],
+                ['which ' . UtilityManager::UTILITY_BASH, [], $processMock1],
+                ['which ' . UtilityManager::UTILITY_TIMEOUT, [], $processMock2],
             ]);
 
         $this->assertSame(
@@ -52,17 +63,24 @@ class UtilityManagerTest extends TestCase
         );
     }
 
-    /**
-     * @expectedException \RuntimeException
-     * @expectedExceptionMessage Utility some_util not found
-     */
     public function testGetWithException()
     {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Utility some_util not found');
+
+        $processMock1 = $this->getMockForAbstractClass(ProcessInterface::class);
+        $processMock1->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('/usr/bash');
+        $processMock2 = $this->getMockForAbstractClass(ProcessInterface::class);
+        $processMock2->expects($this->once())
+            ->method('getOutput')
+            ->willReturn('/usr/timeout');
         $this->shellMock->expects($this->any())
             ->method('execute')
             ->willReturnMap([
-                ['which ' . UtilityManager::UTILITY_BASH, [], ['/usr/bash'],],
-                ['which ' . UtilityManager::UTILITY_TIMEOUT, [], ['/usr/timeout']],
+                ['which ' . UtilityManager::UTILITY_BASH, [], $processMock1],
+                ['which ' . UtilityManager::UTILITY_TIMEOUT, [], $processMock2],
             ]);
 
         $this->assertSame(
@@ -71,12 +89,11 @@ class UtilityManagerTest extends TestCase
         );
     }
 
-    /**
-     * @expectedException \RuntimeException
-     * @expectedExceptionMessage Required utility timeout was not found
-     */
     public function testGetRequiredWithException()
     {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Required utility timeout was not found');
+
         $this->shellMock->expects($this->any())
             ->method('execute')
             ->willThrowException(new \Exception('Shell error'));

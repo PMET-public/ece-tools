@@ -3,9 +3,11 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Http;
 
-use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Client;
 use Magento\MagentoCloud\App\ContainerInterface;
 use Magento\MagentoCloud\Http\ClientFactory;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +29,7 @@ class ClientFactoryTest extends TestCase
     private $containerMock;
 
     /**
-     * @var ClientInterface
+     * @var Client
      */
     private $clientMock;
 
@@ -37,7 +39,7 @@ class ClientFactoryTest extends TestCase
     protected function setUp()
     {
         $this->containerMock = $this->getMockForAbstractClass(ContainerInterface::class);
-        $this->clientMock = $this->getMockForAbstractClass(ClientInterface::class);
+        $this->clientMock = $this->createMock(Client::class);
 
         $this->clientFactory = new ClientFactory(
             $this->containerMock
@@ -51,7 +53,7 @@ class ClientFactoryTest extends TestCase
             ->willReturn($this->clientMock);
 
         $this->assertInstanceOf(
-            ClientInterface::class,
+            Client::class,
             $this->clientFactory->create(['some' => 'value'])
         );
     }

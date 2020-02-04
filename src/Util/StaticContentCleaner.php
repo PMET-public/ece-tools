@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Util;
 
 use Magento\MagentoCloud\Filesystem\DirectoryList;
@@ -50,7 +52,8 @@ class StaticContentCleaner
     public function clean()
     {
         $this->logger->info('Clearing pub/static');
-        $this->file->backgroundClearDirectory($this->directoryList->getPath(DirectoryList::DIR_STATIC));
+        $dirStaticPath = $this->directoryList->getPath(DirectoryList::DIR_STATIC);
+        $this->file->backgroundClearDirectory($dirStaticPath, [$dirStaticPath . DIRECTORY_SEPARATOR . '.htaccess']);
         $this->logger->info('Clearing var/view_preprocessed');
         $this->file->backgroundClearDirectory($this->directoryList->getPath(DirectoryList::DIR_VIEW_PREPROCESSED));
     }

@@ -5,6 +5,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Filesystem\Driver;
 
 use Magento\MagentoCloud\Filesystem\FileSystemException;
@@ -16,7 +18,6 @@ use Magento\MagentoCloud\Filesystem\FileSystemException;
  */
 class File
 {
-
     /**
      * This is the prefix we use for directories we are deleting in the background.
      */
@@ -25,7 +26,7 @@ class File
     /**
      * Returns last warning message string
      *
-     * @return string
+     * @return string|null
      */
     private function getWarningMessage()
     {
@@ -113,7 +114,7 @@ class File
     }
 
     /**
-     * @param $path
+     * @param string $path
      * @param int $mode
      * @param bool $recursive
      * @return bool
@@ -144,7 +145,7 @@ class File
 
             return $result;
         } catch (\Exception $e) {
-            throw new FileSystemException($e->getMessage(), $e);
+            throw new FileSystemException($e->getMessage(), $e->getCode(), $e);
         }
     }
 
@@ -196,8 +197,8 @@ class File
             '/bin/bash -c %s',
             escapeshellarg(sprintf(
                 'shopt -s dotglob; cp -R %s/* %s/',
-                escapeshellarg($source),
-                escapeshellarg($destination)
+                escapeshellarg(rtrim($source, '/')),
+                escapeshellarg(rtrim($destination, '/'))
             ))
         ));
     }
@@ -318,7 +319,8 @@ class File
     public function backgroundClearDirectory(string $path, array $excludes = [])
     {
         if ($this->isLink($path)) {
-            return $this->deleteFile($path);
+            $this->deleteFile($path);
+            return;
         }
 
         $timestamp = time();
@@ -366,7 +368,7 @@ class File
      */
     public function touch($path, $time = null): bool
     {
-        return @touch($path, $time);
+        return @touch($path, $time ?? time());
     }
 
     /**
@@ -374,13 +376,13 @@ class File
      *
      * @param string $path
      * @param string $content
-     * @param string|null $mode
+     * @param int|null $mode
      * @return int The number of bytes that were written.
      * @throws FileSystemException
      */
     public function filePutContents($path, $content, $mode = null)
     {
-        $result = @file_put_contents($path, $content, $mode);
+        $result = @file_put_contents($path, $content, $mode ?? 0);
         if (!$result) {
             $this->fileSystemException(
                 'The specified "%1" file could not be written %2',
@@ -442,15 +444,15 @@ class File
      * Retrieve file contents from given path
      *
      * @param string $path
-     * @param string|null $flag
+     * @param bool $useIncludedPath
      * @param resource|null $context
      * @return string
      * @throws FileSystemException
      */
-    public function fileGetContents($path, $flag = null, $context = null)
+    public function fileGetContents($path, $useIncludedPath = false, $context = null)
     {
         clearstatcache();
-        $result = @file_get_contents($path, $flag, $context);
+        $result = @file_get_contents($path, $useIncludedPath, $context);
         if (false === $result) {
             $this->fileSystemException('Cannot read contents from file "%1" %2', [$path, $this->getWarningMessage()]);
         }

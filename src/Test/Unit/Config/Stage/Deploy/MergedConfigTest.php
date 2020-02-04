@@ -3,17 +3,17 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Config\Stage\Deploy;
 
-use Magento\MagentoCloud\Config\Environment;
+use Magento\MagentoCloud\Config\ConfigException;
 use Magento\MagentoCloud\Config\Environment\Reader as EnvironmentReader;
 use Magento\MagentoCloud\Config\Schema;
 use Magento\MagentoCloud\Config\Stage\Deploy;
 use Magento\MagentoCloud\Config\Stage\Deploy\EnvironmentConfig;
 use Magento\MagentoCloud\Config\Stage\Deploy\MergedConfig;
-use Magento\MagentoCloud\Config\Stage\DeployInterface;
 use Magento\MagentoCloud\Config\StageConfigInterface;
-use Magento\MagentoCloud\Config\SystemConfigInterface;
 use Magento\MagentoCloud\Filesystem\FileSystemException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -40,11 +40,6 @@ class MergedConfigTest extends TestCase
     private $environmentConfigMock;
 
     /**
-     * @var Environment|MockObject
-     */
-    private $environmentMock;
-
-    /**
      * @var Schema|MockObject
      */
     private $schemaMock;
@@ -54,13 +49,11 @@ class MergedConfigTest extends TestCase
      */
     protected function setUp()
     {
-        $this->environmentMock = $this->createMock(Environment::class);
         $this->environmentReaderMock = $this->createMock(EnvironmentReader::class);
         $this->environmentConfigMock = $this->createMock(EnvironmentConfig::class);
         $this->schemaMock = $this->createMock(Schema::class);
 
         $this->mergedConfig = new MergedConfig(
-            $this->environmentMock,
             $this->environmentReaderMock,
             $this->environmentConfigMock,
             $this->schemaMock
@@ -73,8 +66,10 @@ class MergedConfigTest extends TestCase
      * @param array $envVarConfig
      * @param array $expectedConfig
      * @dataProvider getDataProvider
+     *
+     * @throws ConfigException
      */
-    public function testGet(array $defaults, array $envConfig, array $envVarConfig, array $expectedConfig)
+    public function testGet(array $defaults, array $envConfig, array $envVarConfig, array $expectedConfig): void
     {
         $this->schemaMock->expects($this->once())
             ->method('getDefaults')
@@ -95,7 +90,6 @@ class MergedConfigTest extends TestCase
 
     /**
      * @return array
-     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
     public function getDataProvider(): array
     {
@@ -181,74 +175,14 @@ class MergedConfigTest extends TestCase
         ];
     }
 
-    public function testGetEnterpriseEnv()
-    {
-        $this->schemaMock->expects($this->once())
-            ->method('getDefaults')
-            ->with(StageConfigInterface::STAGE_DEPLOY)
-            ->willReturn([
-                Deploy::VAR_SCD_THREADS => 1,
-            ]);
-        $this->environmentMock->expects($this->once())
-            ->method('getEnvVarName')
-            ->with(SystemConfigInterface::VAR_ENV_MODE)
-            ->willReturn('MAGENTO_CLOUD_MODE');
-        $this->environmentMock->expects($this->once())
-            ->method('getEnv')
-            ->with('MAGENTO_CLOUD_MODE')
-            ->willReturn(Environment::CLOUD_MODE_ENTERPRISE);
-
-        $this->assertEquals(
-            [
-                Deploy::VAR_SCD_THREADS => 3,
-            ],
-            $this->mergedConfig->get()
-        );
-    }
-
-    public function testGetEnterpriseEnvOverwrittenByEnvYaml()
-    {
-        $this->schemaMock->expects($this->once())
-            ->method('getDefaults')
-            ->with(StageConfigInterface::STAGE_DEPLOY)
-            ->willReturn([
-                Deploy::VAR_SCD_THREADS => 1,
-            ]);
-        $this->environmentMock->expects($this->once())
-            ->method('getEnvVarName')
-            ->with(SystemConfigInterface::VAR_ENV_MODE)
-            ->willReturn('MAGENTO_CLOUD_MODE');
-        $this->environmentMock->expects($this->once())
-            ->method('getEnv')
-            ->with('MAGENTO_CLOUD_MODE')
-            ->willReturn(Environment::CLOUD_MODE_ENTERPRISE);
-        $this->environmentReaderMock->expects($this->once())
-            ->method('read')
-            ->willReturn([
-                DeployInterface::SECTION_STAGE => [
-                    Deploy::STAGE_GLOBAL => [
-                        Deploy::VAR_SCD_THREADS => 4,
-                    ],
-                    Deploy::STAGE_DEPLOY => [
-                        Deploy::VAR_SCD_THREADS => 5,
-                    ],
-                ]
-            ]);
-
-        $this->assertEquals(
-            [
-                Deploy::VAR_SCD_THREADS => 5,
-            ],
-            $this->mergedConfig->get()
-        );
-    }
-
     /**
-     * @expectedExceptionMessage File system error
-     * @expectedException \RuntimeException
+     * @throws ConfigException
      */
-    public function testGetWithFileSystemException()
+    public function testGetWithFileSystemException(): void
     {
+        $this->expectException(ConfigException::class);
+        $this->expectExceptionMessage('File system error');
+
         $this->environmentReaderMock->expects($this->once())
             ->method('read')
             ->willThrowException(new FileSystemException('File system error'));
@@ -257,11 +191,13 @@ class MergedConfigTest extends TestCase
     }
 
     /**
-     * @expectedExceptionMessage File system error
-     * @expectedException \RuntimeException
+     * @throws ConfigException
      */
-    public function testGetWithParseException()
+    public function testGetWithParseException(): void
     {
+        $this->expectException(ConfigException::class);
+        $this->expectExceptionMessage('File system error');
+
         $this->environmentReaderMock->expects($this->once())
             ->method('read')
             ->willThrowException(new ParseException('File system error'));

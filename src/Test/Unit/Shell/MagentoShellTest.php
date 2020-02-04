@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Shell;
 
 use Magento\MagentoCloud\Shell\MagentoShell;
@@ -41,11 +43,23 @@ class MagentoShellTest extends TestCase
     {
         $this->shellMock->expects($this->once())
             ->method('execute')
-            ->with('php ./bin/magento some:command', ['--ansi', '--no-interaction', 'arg1']);
+            ->with('php ./bin/magento some:command --ansi --no-interaction', ['arg1']);
 
         $this->magentoShell->execute(
             'some:command',
-            'arg1'
+            ['arg1']
+        );
+    }
+
+    public function testExecuteWithEmptyArgument()
+    {
+        $this->shellMock->expects($this->once())
+            ->method('execute')
+            ->with('php ./bin/magento some:command --ansi --no-interaction', ['arg1']);
+
+        $this->magentoShell->execute(
+            'some:command',
+            ['arg1', '', null]
         );
     }
 }

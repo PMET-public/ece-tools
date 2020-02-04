@@ -3,8 +3,11 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\DB;
 
+use Magento\MagentoCloud\Config\Database\MergedConfig;
 use Magento\MagentoCloud\DB\Connection;
 use Magento\MagentoCloud\DB\Data\ConnectionFactory;
 use Magento\MagentoCloud\DB\Data\ConnectionInterface;
@@ -39,9 +42,14 @@ class ConnectionTest extends TestCase
     private $loggerMock;
 
     /**
-     * @var ConnectionInterface
+     * @var ConnectionInterface|MockObject
      */
     private $connectionDataMock;
+
+    /**
+     * @var MergedConfig|MockObject
+     */
+    private $mergedConfigMock;
 
     /**
      * {@inheritdoc}
@@ -52,12 +60,13 @@ class ConnectionTest extends TestCase
     {
         $this->pdoMock = $this->createMock(\PDO::class);
         $this->statementMock = $this->createMock(\PDOStatement::class);
+        $this->mergedConfigMock = $this->createMock(MergedConfig::class);
         $this->loggerMock = $this->getMockForAbstractClass(LoggerInterface::class);
         $this->connectionDataMock = $this->getMockForAbstractClass(ConnectionInterface::class);
 
         /** @var ConnectionFactory|MockObject $connectionFactoryMock */
         $connectionFactoryMock = $this->createMock(ConnectionFactory::class);
-        $connectionFactoryMock->expects($this->once())
+        $connectionFactoryMock->expects($this->any())
             ->method('create')
             ->willReturn($this->connectionDataMock);
 
@@ -66,7 +75,8 @@ class ConnectionTest extends TestCase
 
         $this->connection = new Connection(
             $this->loggerMock,
-            $connectionFactoryMock
+            $connectionFactoryMock,
+            $this->mergedConfigMock
         );
 
         $reflection = new \ReflectionClass(get_class($this->connection));
@@ -130,12 +140,11 @@ class ConnectionTest extends TestCase
         $this->assertSame($this->pdoMock, $this->connection->getPdo());
     }
 
-    /**
-     * @expectedException \Exception
-     * @expectedExceptionMessage Some exception
-     */
     public function testGetPdoWithException()
     {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Some exception');
+
         $this->pdoMock->expects($this->once())
             ->method('query')
             ->with('SELECT 1')
@@ -154,15 +163,6 @@ class ConnectionTest extends TestCase
     public function testClose()
     {
         $this->connection->close();
-    }
-
-    public function testCount()
-    {
-        $this->statementMock->expects($this->once())
-            ->method('rowCount')
-            ->willReturn(1);
-
-        $this->assertSame(1, $this->connection->count('SELECT 1'));
     }
 
     public function testAffectingQuery()
@@ -203,5 +203,44 @@ class ConnectionTest extends TestCase
             ->willReturn(true);
 
         $this->connection->query('SELECT 1', $bindings);
+    }
+
+    /**
+     * @param array $mergedConfig
+     * @param string $tableName
+     * @param string $expectedTableName
+     * @dataProvider getTableNameDataProvider
+     */
+    public function testGetTableName(array $mergedConfig, string $tableName, string $expectedTableName)
+    {
+        $this->mergedConfigMock->expects($this->once())
+            ->method('get')
+            ->willReturn($mergedConfig);
+
+        $this->assertEquals(
+            $expectedTableName,
+            $this->connection->getTableName($tableName)
+        );
+    }
+
+    /**
+     * @return array
+     */
+    public function getTableNameDataProvider(): array
+    {
+        return [
+            'empty prefix' => [
+                [],
+                'table',
+                'table',
+            ],
+            'non empty prefix' => [
+                [
+                    'table_prefix' => 'ece_',
+                ],
+                'table',
+                'ece_table',
+            ],
+        ];
     }
 }

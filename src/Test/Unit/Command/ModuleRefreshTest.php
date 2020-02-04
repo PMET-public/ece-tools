@@ -3,14 +3,18 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Command;
 
 use Magento\MagentoCloud\Command\ModuleRefresh;
 use Magento\MagentoCloud\Config\Module;
+use Magento\MagentoCloud\Filesystem\FileSystemException;
+use Magento\MagentoCloud\Shell\ShellException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * @inheritdoc
@@ -23,62 +27,63 @@ class ModuleRefreshTest extends TestCase
     private $command;
 
     /**
-     * @var LoggerInterface|MockObject
-     */
-    private $loggerMock;
-
-    /**
      * @var Module|MockObject
      */
-    private $configMock;
+    private $moduleMock;
 
     /**
      * @inheritdoc
      */
     protected function setUp()
     {
-        $this->loggerMock = $this->getMockForAbstractClass(LoggerInterface::class);
-        $this->configMock = $this->createMock(Module::class);
+        $this->moduleMock = $this->createMock(Module::class);
 
         $this->command = new ModuleRefresh(
-            $this->loggerMock,
-            $this->configMock
+            $this->moduleMock
         );
-    }
-
-    public function testExecute()
-    {
-        $this->loggerMock->expects($this->exactly(2))
-            ->method('info')
-            ->withConsecutive(
-                ['Refreshing modules started.'],
-                ['Refreshing modules completed.']
-            );
-        $this->configMock->expects($this->once())
-            ->method('refresh');
-
-        $tester = new CommandTester(
-            $this->command
-        );
-        $tester->execute([]);
     }
 
     /**
-     * @expectedException \RuntimeException
-     * @expectedExceptionMessage Some exception
+     * @throws FileSystemException
+     * @throws ShellException
      */
-    public function testExecuteWithException()
+    public function testExecute(): void
     {
-        $this->configMock->expects($this->once())
-            ->method('refresh')
-            ->willThrowException(new \RuntimeException('Some exception'));
-        $this->loggerMock->expects($this->once())
-            ->method('critical')
-            ->with('Some exception');
+        /** @var InputInterface|MockObject $inputMock */
+        $inputMock = $this->getMockForAbstractClass(InputInterface::class);
+        /** @var OutputInterface|MockObject $outputMock */
+        $outputMock = $this->getMockForAbstractClass(OutputInterface::class);
 
-        $tester = new CommandTester(
-            $this->command
-        );
-        $tester->execute([]);
+        $outputMock->expects($this->once())
+            ->method('writeln')
+            ->with("The following modules have been enabled:\nMagento_Demo");
+
+        $this->moduleMock->expects($this->once())
+            ->method('refresh')
+            ->willReturn(['Magento_Demo']);
+
+        $this->command->execute($inputMock, $outputMock);
+    }
+
+    /**
+     * @throws FileSystemException
+     * @throws ShellException
+     */
+    public function testExecuteNoModules(): void
+    {
+        /** @var InputInterface|MockObject $inputMock */
+        $inputMock = $this->getMockForAbstractClass(InputInterface::class);
+        /** @var OutputInterface|MockObject $outputMock */
+        $outputMock = $this->getMockForAbstractClass(OutputInterface::class);
+
+        $outputMock->expects($this->once())
+            ->method('writeln')
+            ->with('No modules were changed.');
+
+        $this->moduleMock->expects($this->once())
+            ->method('refresh')
+            ->willReturn([]);
+
+        $this->command->execute($inputMock, $outputMock);
     }
 }

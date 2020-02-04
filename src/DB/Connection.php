@@ -3,10 +3,12 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\DB;
 
+use Magento\MagentoCloud\Config\Database\MergedConfig;
 use Magento\MagentoCloud\DB\Data\ConnectionFactory;
-use Magento\MagentoCloud\DB\Data\ConnectionInterface as DatabaseConnectionInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -17,7 +19,7 @@ class Connection implements ConnectionInterface
     const MYSQL_ERROR_CODE_SERVER_GONE_AWAY = 2006;
 
     /**
-     * @var \PDO
+     * @var \PDO|null
      */
     private $pdo;
 
@@ -32,18 +34,33 @@ class Connection implements ConnectionInterface
     private $fetchMode = \PDO::FETCH_ASSOC;
 
     /**
-     * @var DatabaseConnectionInterface
+     * @var ConnectionFactory
      */
-    private $connectionData;
+    private $connectionFactory;
+
+    /**
+     * @var MergedConfig
+     */
+    private $mergedConfig;
+
+    /**
+     * @var string
+     */
+    private $tablePrefix;
 
     /**
      * @param LoggerInterface $logger
      * @param ConnectionFactory $connectionFactory
+     * @param MergedConfig $mergedConfig
      */
-    public function __construct(LoggerInterface $logger, ConnectionFactory $connectionFactory)
-    {
+    public function __construct(
+        LoggerInterface $logger,
+        ConnectionFactory $connectionFactory,
+        MergedConfig $mergedConfig
+    ) {
         $this->logger = $logger;
-        $this->connectionData = $connectionFactory->create(ConnectionFactory::CONNECTION_MAIN);
+        $this->connectionFactory = $connectionFactory;
+        $this->mergedConfig = $mergedConfig;
     }
 
     /**
@@ -93,7 +110,15 @@ class Connection implements ConnectionInterface
      */
     public function selectOne(string $query, array $bindings = []): array
     {
-        return $this->getFetchStatement($query, $bindings)->fetch(\PDO::FETCH_ASSOC);
+        $result = $this->getFetchStatement($query, $bindings)->fetch(\PDO::FETCH_ASSOC);
+
+        if ($result === false) {
+            $this->logger->error('Failed to execute query: ' . var_export($this->getPdo()->errorInfo(), true));
+
+            $result = [];
+        }
+
+        return $result;
     }
 
     /**
@@ -184,14 +209,15 @@ class Connection implements ConnectionInterface
             return;
         }
 
+        $connectionData = $this->connectionFactory->create(ConnectionFactory::CONNECTION_MAIN);
         $this->pdo = new \PDO(
             sprintf(
                 'mysql:dbname=%s;host=%s',
-                $this->connectionData->getDbName(),
-                $this->connectionData->getHost()
+                $connectionData->getDbName(),
+                $connectionData->getHost()
             ),
-            $this->connectionData->getUser(),
-            $this->connectionData->getPassword(),
+            $connectionData->getUser(),
+            $connectionData->getPassword(),
             [
                 \PDO::ATTR_PERSISTENT => true,
             ]
@@ -218,22 +244,34 @@ class Connection implements ConnectionInterface
     /**
      * @inheritdoc
      */
-    public function count(string $query, array $bindings = []): int
+    public function close()
     {
-        return $this->run($query, $bindings, function ($query, $bindings) {
-            $statement = $this->getPdo()->prepare($query);
-            $this->bindValues($statement, $bindings);
-            $statement->execute();
-
-            return $statement->rowCount();
-        });
+        $this->pdo = null;
     }
 
     /**
      * @inheritdoc
      */
-    public function close()
+    public function getTableName(string $name): string
     {
-        $this->pdo = null;
+        if (!empty($this->getTablePrefix())) {
+            $name = $this->getTablePrefix() . $name;
+        }
+
+        return $name;
+    }
+
+    /**
+     * Returns table_prefix value.
+     *
+     * @return string
+     */
+    private function getTablePrefix(): string
+    {
+        if ($this->tablePrefix === null) {
+            $this->tablePrefix = $this->mergedConfig->get()['table_prefix'] ?? '';
+        }
+
+        return $this->tablePrefix;
     }
 }

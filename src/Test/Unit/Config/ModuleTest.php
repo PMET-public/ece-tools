@@ -3,11 +3,16 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Config;
 
-use Magento\MagentoCloud\Config\ConfigInterface;
+use Magento\MagentoCloud\Config\Magento\Shared\ReaderInterface;
+use Magento\MagentoCloud\Config\Magento\Shared\WriterInterface;
 use Magento\MagentoCloud\Config\Module;
-use Magento\MagentoCloud\Shell\ShellInterface;
+use Magento\MagentoCloud\Filesystem\FileSystemException;
+use Magento\MagentoCloud\Shell\MagentoShell;
+use Magento\MagentoCloud\Shell\ShellFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -22,78 +27,123 @@ class ModuleTest extends TestCase
     private $module;
 
     /**
-     * @var ConfigInterface|MockObject
+     * @var ReaderInterface|MockObject
      */
-    private $configMock;
+    private $readerMock;
 
     /**
-     * @var ShellInterface|MockObject
+     * @var WriterInterface|MockObject
      */
-    private $shellMock;
+    private $writerMock;
+
+    /**
+     * @var MagentoShell|MockObject
+     */
+    private $magentoShellMock;
 
     /**
      * @inheritdoc
      */
     protected function setUp()
     {
-        $this->configMock = $this->getMockForAbstractClass(ConfigInterface::class);
-        $this->shellMock = $this->getMockForAbstractClass(ShellInterface::class);
+        $this->readerMock = $this->getMockForAbstractClass(ReaderInterface::class);
+        $this->writerMock = $this->getMockForAbstractClass(WriterInterface::class);
+        $this->magentoShellMock = $this->createMock(MagentoShell::class);
+
+        /** @var ShellFactory|MockObject $shellFactoryMock */
+        $shellFactoryMock = $this->createMock(ShellFactory::class);
+        $shellFactoryMock->expects($this->once())
+            ->method('createMagento')
+            ->willReturn($this->magentoShellMock);
 
         $this->module = new Module(
-            $this->configMock,
-            $this->shellMock
+            $this->readerMock,
+            $this->writerMock,
+            $shellFactoryMock
         );
     }
 
-    public function testRefreshWithMissingModuleConfig()
+    /**
+     * @throws FileSystemException
+     */
+    public function testRefreshWithMissingModuleConfig(): void
     {
-        $this->configMock->expects($this->once())
-            ->method('get')
-            ->with('modules')
-            ->willReturn(null);
-        $this->configMock->expects($this->once())
-            ->method('reset');
-        $this->shellMock->expects($this->once())
+        $this->readerMock->expects($this->exactly(2))
+            ->method('read')
+            ->willReturnOnConsecutiveCalls(
+                [],
+                [
+                    'modules' => [
+                        'Magento_Module1' => 1,
+                        'Magento_Module2' => 1,
+                    ]
+                ]
+            );
+        $this->magentoShellMock->expects($this->once())
             ->method('execute')
-            ->with('php ./bin/magento module:enable --all --ansi --no-interaction');
-        $this->configMock->expects($this->never())
-            ->method('update');
+            ->with('module:enable --all');
+        $this->writerMock->expects($this->once())
+            ->method('update')
+            ->with(['modules' => []]);
 
-        $this->module->refresh();
+        $this->assertEquals(
+            [
+                'Magento_Module1',
+                'Magento_Module2',
+            ],
+            $this->module->refresh()
+        );
     }
 
-    public function testRefreshWithNewModules()
+    /**
+     * @throws FileSystemException
+     */
+    public function testRefreshWithNewModules(): void
     {
-        $this->configMock->expects($this->once())
-            ->method('get')
-            ->with('modules')
-            ->willReturn(['Some_OtherModule' => 1]);
-        $this->shellMock->expects($this->once())
+        $this->readerMock->expects($this->exactly(2))
+            ->method('read')
+            ->willReturnOnConsecutiveCalls(
+                [
+                    'modules' => [
+                        'Magento_Module1' => 1,
+                        'Magento_Module2' => 0,
+                        'Magento_Module3' => 1,
+                    ],
+                ],
+                [
+                    'modules' => [
+                        'Magento_Module1' => 1,
+                        'Magento_Module2' => 1,
+                        'Magento_Module3' => 1,
+                        'Magento_Module4' => 1,
+                        'Magento_Module5' => 1,
+                    ],
+                ]
+            );
+        $this->magentoShellMock->expects($this->once())
             ->method('execute')
-            ->with('php ./bin/magento module:enable --all --ansi --no-interaction');
-        $this->configMock->expects($this->never())
-            ->method('reset');
-        $this->configMock->expects($this->once())
+            ->with('module:enable --all');
+        $this->writerMock->expects($this->exactly(2))
             ->method('update')
-            ->with(['modules' => ['Some_OtherModule' => 1]])
-            ->willReturn(null);
+            ->withConsecutive(
+                [['modules' => []]],
+                [
+                    [
+                        'modules' => [
+                            'Magento_Module1' => 1,
+                            'Magento_Module2' => 0,
+                            'Magento_Module3' => 1,
+                        ]
+                    ]
+                ]
+            );
 
-        $this->module->refresh();
-    }
-
-    public function testRefreshWithNoNewModules()
-    {
-        $this->configMock->expects($this->once())
-            ->method('get')
-            ->with('modules')
-            ->willReturn(['Some_ExistingModule' => 1]);
-        $this->configMock->expects($this->any())
-            ->method('all')
-            ->willReturn(['modules' => ['Some_ExistingModule' => 1]]);
-        $this->configMock->expects($this->any())
-            ->method('update')
-            ->willReturn(null);
-
-        $this->module->refresh();
+        $this->assertEquals(
+            [
+                'Magento_Module4',
+                'Magento_Module5',
+            ],
+            $this->module->refresh()
+        );
     }
 }

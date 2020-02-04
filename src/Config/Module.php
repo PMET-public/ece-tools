@@ -3,11 +3,16 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Config;
 
+use Magento\MagentoCloud\Config\Magento\Shared\ReaderInterface;
+use Magento\MagentoCloud\Config\Magento\Shared\WriterInterface;
 use Magento\MagentoCloud\Filesystem\FileSystemException;
+use Magento\MagentoCloud\Shell\MagentoShell;
 use Magento\MagentoCloud\Shell\ShellException;
-use Magento\MagentoCloud\Shell\ShellInterface;
+use Magento\MagentoCloud\Shell\ShellFactory;
 
 /**
  * Performs module management operations.
@@ -15,43 +20,54 @@ use Magento\MagentoCloud\Shell\ShellInterface;
 class Module
 {
     /**
-     * @var ConfigInterface
+     * @var MagentoShell
      */
-    private $config;
+    private $magentoShell;
 
     /**
-     * @var ShellInterface
+     * @var ReaderInterface
      */
-    private $shell;
+    private $reader;
 
     /**
-     * @param ConfigInterface $config
-     * @param ShellInterface $shell
+     * @var WriterInterface
      */
-    public function __construct(ConfigInterface $config, ShellInterface $shell)
+    private $writer;
+
+    /**
+     * @param ReaderInterface $reader
+     * @param WriterInterface $writer
+     * @param ShellFactory $shellFactory
+     */
+    public function __construct(ReaderInterface $reader, WriterInterface $writer, ShellFactory $shellFactory)
     {
-        $this->config = $config;
-        $this->shell = $shell;
+        $this->reader = $reader;
+        $this->writer = $writer;
+        $this->magentoShell = $shellFactory->createMagento();
     }
 
     /**
      * Reconciling installed modules with shared config.
+     * Returns list of new enabled modules or an empty array if no modules were enabled.
      *
      * @throws ShellException
      * @throws FileSystemException
      */
-    public function refresh()
+    public function refresh(): array
     {
-        $moduleConfig = (array)$this->config->get('modules');
+        // Update initial config file to avoid broken file error.
+        $this->writer->update(['modules' => []]);
 
-        if (!$moduleConfig) {
-            $this->shell->execute('php ./bin/magento module:enable --all --ansi --no-interaction');
-            $this->config->reset();
+        $moduleConfig = $this->reader->read()['modules'] ?? [];
 
-            return;
+        $this->magentoShell->execute('module:enable --all');
+
+        $updatedModuleConfig = $this->reader->read()['modules'] ?? [];
+
+        if ($moduleConfig) {
+            $this->writer->update(['modules' => $moduleConfig]);
         }
 
-        $this->shell->execute('php ./bin/magento module:enable --all --ansi --no-interaction');
-        $this->config->update(['modules' => $moduleConfig]);
+        return array_keys(array_diff_key($updatedModuleConfig, $moduleConfig));
     }
 }

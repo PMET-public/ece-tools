@@ -3,13 +3,15 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Config\Factory;
 
 use Magento\MagentoCloud\Config\ConfigMerger;
-use Magento\MagentoCloud\Config\Environment;
 use Magento\MagentoCloud\Config\Factory\Cache;
 use Magento\MagentoCloud\Config\StageConfigInterface;
 use Magento\MagentoCloud\Config\Stage\DeployInterface;
+use Magento\MagentoCloud\Service\Redis;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -20,9 +22,9 @@ use Psr\Log\LoggerInterface;
 class CacheTest extends TestCase
 {
     /**
-     * @var Environment|MockObject
+     * @var Redis|MockObject
      */
-    private $environmentMock;
+    private $redisMock;
 
     /**
      * @var DeployInterface|MockObject
@@ -41,13 +43,13 @@ class CacheTest extends TestCase
 
     protected function setUp()
     {
-        $this->environmentMock = $this->createMock(Environment::class);
+        $this->redisMock = $this->createMock(Redis::class);
         $this->stageConfigMock = $this->getMockForAbstractClass(DeployInterface::class);
         $this->loggerMock = $this->getMockBuilder(LoggerInterface::class)
             ->getMockForAbstractClass();
 
         $this->config = new Cache(
-            $this->environmentMock,
+            $this->redisMock,
             $this->stageConfigMock,
             $this->loggerMock,
             new ConfigMerger()
@@ -68,9 +70,8 @@ class CacheTest extends TestCase
                     false
                 ]
             ]);
-        $this->environmentMock->expects($this->never())
-            ->method('getRelationship')
-            ->with('redis');
+        $this->redisMock->expects($this->never())
+            ->method('getConfiguration');
 
         $this->loggerMock->expects($this->never())
             ->method('notice');
@@ -95,9 +96,8 @@ class CacheTest extends TestCase
                     true
                 ]
             ]);
-        $this->environmentMock->expects($this->never())
-            ->method('getRelationship')
-            ->with('redis');
+        $this->redisMock->expects($this->never())
+            ->method('getConfiguration');
 
         $this->loggerMock->expects($this->once())
             ->method('notice')
@@ -116,9 +116,8 @@ class CacheTest extends TestCase
             ->method('get')
             ->with(DeployInterface::VAR_CACHE_CONFIGURATION)
             ->willReturn([]);
-        $this->environmentMock->expects($this->once())
-            ->method('getRelationship')
-            ->with('redis')
+        $this->redisMock->expects($this->once())
+            ->method('getConfiguration')
             ->willReturn([]);
 
         $this->assertEmpty($this->config->get());
@@ -152,12 +151,12 @@ class CacheTest extends TestCase
                     $useSlave
                 ]
             ]);
-        $this->environmentMock->expects($this->exactly(2))
-            ->method('getRelationship')
-            ->willReturnMap([
-                ['redis', $masterConnection],
-                ['redis-slave', $slaveConnection],
-            ]);
+        $this->redisMock->expects($this->once())
+            ->method('getConfiguration')
+            ->willReturn($masterConnection);
+        $this->redisMock->expects($this->once())
+            ->method('getSlaveConfiguration')
+            ->willReturn($slaveConnection);
 
         $this->assertEquals(
             $expectedResult,
@@ -180,19 +179,15 @@ class CacheTest extends TestCase
      */
     public function getFromRelationshipsDataProvider()
     {
-        $relationshipsRedis = [
-            [
-                'host' => 'master.host',
-                'port' => 'master.port',
-                'scheme' => 'redis',
-            ]
+        $redisConfiguration = [
+            'host' => 'master.host',
+            'port' => 'master.port',
+            'scheme' => 'redis',
         ];
-        $relationshipsRedisSlave = [
-            [
-                'host' => 'slave.host',
-                'port' => 'slave.port',
-                'scheme' => 'redis',
-            ]
+        $redisSlaveConfiguration = [
+            'host' => 'slave.host',
+            'port' => 'slave.port',
+            'scheme' => 'redis',
         ];
 
         $resultMasterOnlyConnection = [
@@ -202,7 +197,7 @@ class CacheTest extends TestCase
                     'backend_options' => [
                         'server' => 'master.host',
                         'port' => 'master.port',
-                        'database' => 1
+                        'database' => Cache::REDIS_DATABASE_DEFAULT
                     ],
                 ],
                 'page_cache' => [
@@ -210,20 +205,35 @@ class CacheTest extends TestCase
                     'backend_options' => [
                         'server' => 'master.host',
                         'port' => 'master.port',
-                        'database' => 1
+                        'database' => Cache::REDIS_DATABASE_PAGE_CACHE
                     ],
                 ],
             ]
         ];
+
+        $slaveConfiguration = [
+            'backend_options' => [
+                'load_from_slave' => [
+                    'server' => 'slave.host',
+                    'port' => 'slave.port',
+                ],
+                'read_timeout' => 1,
+                'retry_reads_on_master' => 1,
+            ],
+            'frontend_options' => [
+                'write_control' => false,
+            ]
+        ];
+
         $resultMasterSlaveConnection = $resultMasterOnlyConnection;
-        $resultMasterSlaveConnection['frontend']['default']['backend_options']['load_from_slave'] = [
-            'server' => 'slave.host',
-            'port' => 'slave.port',
-        ];
-        $resultMasterSlaveConnection['frontend']['page_cache']['backend_options']['load_from_slave'] = [
-            'server' => 'slave.host',
-            'port' => 'slave.port',
-        ];
+        $resultMasterSlaveConnection['frontend']['default'] = array_merge_recursive(
+            $resultMasterSlaveConnection['frontend']['default'],
+            $slaveConfiguration
+        );
+        $resultMasterSlaveConnection['frontend']['page_cache'] = array_merge_recursive(
+            $resultMasterSlaveConnection['frontend']['page_cache'],
+            $slaveConfiguration
+        );
 
         $resultMasterSlaveConnectionWithMergedValue = $resultMasterSlaveConnection;
         $resultMasterSlaveConnectionWithMergedValue['frontend']['default']['backend_options']['value'] = 'key';
@@ -235,29 +245,29 @@ class CacheTest extends TestCase
         return [
             [
                 [],
-                $relationshipsRedis,
+                $redisConfiguration,
                 [],
                 false,
                 $resultMasterOnlyConnection
             ],
             [
                 [],
-                $relationshipsRedis,
-                $relationshipsRedisSlave,
+                $redisConfiguration,
+                $redisSlaveConfiguration,
                 false,
                 $resultMasterOnlyConnection
             ],
             [
                 [],
-                $relationshipsRedis,
+                $redisConfiguration,
                 [],
                 true,
                 $resultMasterOnlyConnection
             ],
             [
                 [],
-                $relationshipsRedis,
-                $relationshipsRedisSlave,
+                $redisConfiguration,
+                $redisSlaveConfiguration,
                 true,
                 $resultMasterSlaveConnection
             ],
@@ -272,8 +282,8 @@ class CacheTest extends TestCase
                     ],
                     StageConfigInterface::OPTION_MERGE => true
                 ],
-                $relationshipsRedis,
-                $relationshipsRedisSlave,
+                $redisConfiguration,
+                $redisSlaveConfiguration,
                 true,
                 $resultMasterSlaveConnectionWithMergedValue
             ],
@@ -289,8 +299,8 @@ class CacheTest extends TestCase
                     ],
                     StageConfigInterface::OPTION_MERGE => true
                 ],
-                $relationshipsRedis,
-                $relationshipsRedisSlave,
+                $redisConfiguration,
+                $redisSlaveConfiguration,
                 true,
                 $resultMasterSlaveConnectionWithDiffHost
             ],
@@ -299,13 +309,13 @@ class CacheTest extends TestCase
 
     /**
      * @param array $envCacheConfiguration
-     * @param array $relationships
+     * @param array $redisConfiguration
      * @param array $expected
      * @dataProvider envConfigurationMergingDataProvider
      */
     public function testEnvConfigurationMerging(
         array $envCacheConfiguration,
-        array $relationships,
+        array $redisConfiguration,
         array $expected
     ) {
         $this->stageConfigMock
@@ -320,12 +330,12 @@ class CacheTest extends TestCase
                     false
                 ]
             ]);
-        $this->environmentMock
-            ->method('getRelationship')
-            ->willReturnMap([
-                ['redis', $relationships],
-                ['redis-slave', []],
-            ]);
+        $this->redisMock->expects($this->any())
+            ->method('getConfiguration')
+            ->willReturn($redisConfiguration);
+        $this->redisMock->expects($this->any())
+            ->method('getSlaveConfiguration')
+            ->willReturn([]);
 
         $this->assertEquals(
             $expected,
@@ -339,12 +349,10 @@ class CacheTest extends TestCase
      */
     public function envConfigurationMergingDataProvider(): array
     {
-        $relationships = [
-            [
-                'host' => 'master.host',
-                'port' => 'master.port',
-                'scheme' => 'redis',
-            ]
+        $redisConfiguration = [
+            'host' => 'master.host',
+            'port' => 'master.port',
+            'scheme' => 'redis',
         ];
 
         $result = [
@@ -354,7 +362,7 @@ class CacheTest extends TestCase
                     'backend_options' => [
                         'server' => 'master.host',
                         'port' => 'master.port',
-                        'database' => 1
+                        'database' => Cache::REDIS_DATABASE_DEFAULT
                     ],
                 ],
                 'page_cache' => [
@@ -362,7 +370,7 @@ class CacheTest extends TestCase
                     'backend_options' => [
                         'server' => 'master.host',
                         'port' => 'master.port',
-                        'database' => 1
+                        'database' => Cache::REDIS_DATABASE_PAGE_CACHE
                     ],
                 ],
             ]
@@ -379,12 +387,12 @@ class CacheTest extends TestCase
         return [
             [
                 [],
-                $relationships,
+                $redisConfiguration,
                 $result,
             ],
             [
                 [StageConfigInterface::OPTION_MERGE => true],
-                $relationships,
+                $redisConfiguration,
                 $result,
             ],
             [
@@ -392,7 +400,7 @@ class CacheTest extends TestCase
                     StageConfigInterface::OPTION_MERGE => true,
                     'key' => 'value',
                 ],
-                $relationships,
+                $redisConfiguration,
                 $resultWithMergedKey,
             ],
             [
@@ -408,7 +416,7 @@ class CacheTest extends TestCase
                         ],
                     ],
                 ],
-                $relationships,
+                $redisConfiguration,
                 $resultWithMergedHostAndPort,
             ],
             [
@@ -424,7 +432,7 @@ class CacheTest extends TestCase
                         ],
                     ],
                 ],
-                $relationships,
+                $redisConfiguration,
                 [
                     'frontend' => [
                         'default' => [

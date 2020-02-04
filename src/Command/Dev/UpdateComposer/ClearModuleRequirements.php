@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Command\Dev\UpdateComposer;
 
 use Magento\MagentoCloud\Filesystem\DirectoryList;
@@ -49,35 +51,50 @@ class ClearModuleRequirements
     {
         $rootDirectory = $this->directoryList->getMagentoRoot();
         $clearModulesFilePath = $rootDirectory . '/' . self::SCRIPT_PATH;
-        $reposArrayToString = '[\'' . implode('\', \'', $repos) . '\']';
+        $stringRepos = var_export($repos, true);
+        $singlePackageType = ComposerGenerator::REPO_TYPE_SINGLE_PACKAGE;
 
         $clearModulesCode = <<<CODE
 <?php
-foreach ({$reposArrayToString} as \$repoName) {
-    foreach (glob(__DIR__ .'/' . \$repoName . '/app/code/Magento/*') as \$moduleDir) {
-        if (!file_exists(\$moduleDir . '/composer.json')) {
-            continue;
+\$repos = {$stringRepos};
+
+function clearRequirements(\$dir) {
+    if (!file_exists(\$dir . '/composer.json')) {
+        return;
+    }
+
+    \$composerJson = json_decode(file_get_contents(\$dir . '/composer.json'), true);
+
+    foreach (\$composerJson['require'] as \$requireName => \$requireVersion) {
+        if (preg_match('{^(magento\/|elasticsearch\/)}i', \$requireName)) {
+            unset(\$composerJson['require'][\$requireName]);
         }
+    }
 
-        \$composerJson = json_decode(file_get_contents(\$moduleDir . '/composer.json'), true);
+    file_put_contents(
+        \$dir . '/composer.json',
+        json_encode(\$composerJson, JSON_PRETTY_PRINT)
+    );
+}
 
-        foreach (\$composerJson['require'] as \$requireName => \$requireVersion) {
-            if (preg_match('{^(magento\/|elasticsearch\/)}i', \$requireName)) {
-                unset(\$composerJson['require'][\$requireName]);
-            }
-        }
+foreach (\$repos as \$repoName => \$repoOptions) {
+    \$repoDir = __DIR__ .'/' . \$repoName;
 
-        file_put_contents(
-            \$moduleDir . '/composer.json',
-            json_encode(\$composerJson, JSON_PRETTY_PRINT)
-        );
+    if (isset(\$repoOptions['type']) && \$repoOptions['type'] == '{$singlePackageType}') {
+        clearRequirements(\$repoDir);
+        continue;
+    }
+
+    foreach (glob(\$repoDir . '/app/code/Magento/*') as \$moduleDir) {
+        clearRequirements(\$moduleDir);
     }
 }
+
 CODE;
         $this->file->filePutContents($clearModulesFilePath, $clearModulesCode);
 
         $gitIgnore = $this->file->fileGetContents($rootDirectory . '/.gitignore');
-        if (strpos($gitIgnore, self::SCRIPT_PATH) === false) {
+        if (strpos($gitIgnore ?? '', self::SCRIPT_PATH) === false) {
             $this->file->filePutContents(
                 $rootDirectory . '/.gitignore',
                 '!/' . self::SCRIPT_PATH . PHP_EOL,

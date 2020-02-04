@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Config;
 
 use Illuminate\Contracts\Config\Repository;
@@ -92,28 +94,28 @@ class LogTest extends TestCase
                 'config' => [],
                 'expectedResult' => [
                     HandlerFactory::HANDLER_STREAM => ['stream' => 'php://stdout'],
-                    HandlerFactory::HANDLER_FILE => ['stream' => 'somePath']
+                    HandlerFactory::HANDLER_FILE => ['file' => 'somePath']
                 ]
             ],
             [
                 'config' => ['someConfig' => ['someConfig']],
                 'expectedResult' => [
                     HandlerFactory::HANDLER_STREAM => ['stream' => 'php://stdout'],
-                    HandlerFactory::HANDLER_FILE => ['stream' => 'somePath']
+                    HandlerFactory::HANDLER_FILE => ['file' => 'somePath']
                 ],
             ],
             [
                 'config' => ['log' => []],
                 'expectedResult' => [
                     HandlerFactory::HANDLER_STREAM => ['stream' => 'php://stdout'],
-                    HandlerFactory::HANDLER_FILE => ['stream' => 'somePath']
+                    HandlerFactory::HANDLER_FILE => ['file' => 'somePath']
                 ],
             ],
             [
                 'config' => ['log' => ['SomeHandler' => ['SomeConfig']]],
                 'expectedResult' => [
                     HandlerFactory::HANDLER_STREAM => ['stream' => 'php://stdout'],
-                    HandlerFactory::HANDLER_FILE => ['stream' => 'somePath'],
+                    HandlerFactory::HANDLER_FILE => ['file' => 'somePath'],
                     'SomeHandler' => ['SomeConfig']
                 ],
             ],
@@ -121,7 +123,7 @@ class LogTest extends TestCase
                 'config' => ['log' => ['SomeHandler' => ['SomeConfig']], 'someConfig' => ['someConfig']],
                 'expectedResult' => [
                     HandlerFactory::HANDLER_STREAM => ['stream' => 'php://stdout'],
-                    HandlerFactory::HANDLER_FILE => ['stream' => 'somePath'],
+                    HandlerFactory::HANDLER_FILE => ['file' => 'somePath'],
                     'SomeHandler' => ['SomeConfig']
                 ],
             ],
@@ -153,12 +155,11 @@ class LogTest extends TestCase
         );
     }
 
-    /**
-     * @expectedException \Exception
-     * @expectedExceptionMessage Configuration for SomeHandler is not found
-     */
     public function testGetWithException()
     {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Configuration for SomeHandler is not found');
+
         $this->fileListMock->expects($this->once())
             ->method('getCloudLog')
             ->willReturn('somePath');

@@ -3,10 +3,14 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\DB;
 
 /**
- * General Connection interface.
+ * Interface for database operations.
+ *
+ * @api
  */
 interface ConnectionInterface
 {
@@ -47,15 +51,6 @@ interface ConnectionInterface
     public function selectOne(string $query, array $bindings = []): array;
 
     /**
-     * Count results according to query.
-     *
-     * @param string $query
-     * @param array $bindings
-     * @return int
-     */
-    public function count(string $query, array $bindings = []): int;
-
-    /**
      * List existing tables.
      *
      * @return array
@@ -84,4 +79,12 @@ interface ConnectionInterface
      * @return void
      */
     public function close();
+
+    /**
+     * Generates table name based on additional settings like `table_prefix`
+     *
+     * @param string $name
+     * @return string
+     */
+    public function getTableName(string $name): string;
 }

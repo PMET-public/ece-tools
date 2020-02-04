@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Util;
 
 use Magento\MagentoCloud\Util\ArrayManager;
@@ -109,6 +111,14 @@ class ArrayManagerTest extends TestCase
             [
                 [
                     'some/admin_user/locale/code' => 'en_US',
+                ],
+                'admin_user/locale/code',
+                false,
+                [],
+            ],
+            [
+                [
+                    'admin_user/locale/code' => [],
                 ],
                 'admin_user/locale/code',
                 false,

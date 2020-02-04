@@ -3,11 +3,13 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Config;
 
 use Illuminate\Contracts\Config\Repository;
 use Magento\MagentoCloud\Filesystem\FileList;
-use Magento\MagentoCloud\Config\Environment\Reader;
+use Magento\MagentoCloud\Config\Environment\ReaderInterface;
 use Magento\MagentoCloud\App\Logger\HandlerFactory;
 
 /**
@@ -15,19 +17,19 @@ use Magento\MagentoCloud\App\Logger\HandlerFactory;
  */
 class Log
 {
-    const SECTION_CONFIG = 'log';
+    public const SECTION_CONFIG = 'log';
 
     /**
      * Log levels.
      */
-    const LEVEL_DEBUG = 'debug';
-    const LEVEL_INFO = 'info';
-    const LEVEL_NOTICE = 'notice';
-    const LEVEL_WARNING = 'warning';
-    const LEVEL_ERROR = 'error';
-    const LEVEL_CRITICAL = 'critical';
-    const LEVEL_ALERT = 'alert';
-    const LEVEL_EMERGENCY = 'emergency';
+    public const LEVEL_DEBUG = 'debug';
+    public const LEVEL_INFO = 'info';
+    public const LEVEL_NOTICE = 'notice';
+    public const LEVEL_WARNING = 'warning';
+    public const LEVEL_ERROR = 'error';
+    public const LEVEL_CRITICAL = 'critical';
+    public const LEVEL_ALERT = 'alert';
+    public const LEVEL_EMERGENCY = 'emergency';
 
     /**
      * @var FileList
@@ -35,7 +37,7 @@ class Log
     private $fileList;
 
     /**
-     * @var Reader
+     * @var ReaderInterface
      */
     private $reader;
 
@@ -51,10 +53,10 @@ class Log
 
     /**
      * @param FileList $fileList
-     * @param Reader $reader
+     * @param ReaderInterface $reader
      * @param RepositoryFactory $repositoryFactory
      */
-    public function __construct(FileList $fileList, Reader $reader, RepositoryFactory $repositoryFactory)
+    public function __construct(FileList $fileList, ReaderInterface $reader, RepositoryFactory $repositoryFactory)
     {
         $this->fileList = $fileList;
         $this->reader = $reader;
@@ -96,7 +98,7 @@ class Log
             $this->config = array_replace_recursive(
                 [
                     HandlerFactory::HANDLER_STREAM => ['stream' => 'php://stdout'],
-                    HandlerFactory::HANDLER_FILE => ['stream' => $this->fileList->getCloudLog()],
+                    HandlerFactory::HANDLER_FILE => ['file' => $this->fileList->getCloudLog()],
                 ],
                 $this->reader->read()[static::SECTION_CONFIG] ?? []
             );

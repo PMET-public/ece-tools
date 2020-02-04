@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Config\Validator\Deploy;
 
 use Magento\MagentoCloud\Config\Stage\DeployInterface;
@@ -56,6 +58,7 @@ class AppropriateVersion implements ValidatorInterface
             $variables = [
                 DeployInterface::VAR_CRON_CONSUMERS_RUNNER,
                 DeployInterface::VAR_SCD_STRATEGY,
+                DeployInterface::VAR_SCD_MAX_EXEC_TIME,
             ];
 
             foreach ($variables as $variableName) {

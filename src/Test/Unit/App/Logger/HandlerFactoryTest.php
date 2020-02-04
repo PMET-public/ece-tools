@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\App\Logger;
 
 use Illuminate\Config\Repository;
@@ -12,6 +14,7 @@ use Magento\MagentoCloud\App\Logger\HandlerFactory;
 use Magento\MagentoCloud\App\Logger\LevelResolver;
 use Magento\MagentoCloud\Config\GlobalSection;
 use Magento\MagentoCloud\Config\Log as LogConfig;
+use Monolog\Handler\AbstractHandler;
 use Monolog\Handler\HandlerInterface;
 use Monolog\Handler\NativeMailerHandler;
 use Monolog\Handler\SlackHandler;
@@ -78,12 +81,11 @@ class HandlerFactoryTest extends TestCase
         );
     }
 
-    /**
-     * @expectedException \Exception
-     * @expectedExceptionMessage Unknown type of log handler: someHandler
-     */
     public function testCreateWithWrongHandlerFromFile()
     {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Unknown type of log handler: someHandler');
+
         $handler = 'someHandler';
         $this->logConfigMock->expects($this->once())
             ->method('get')
@@ -127,14 +129,16 @@ class HandlerFactoryTest extends TestCase
     }
 
     /**
-     * @param string $handler
-     * @param int $repositoryMockGetExpects
+     * @param string $handlerName
      * @param array $repositoryMockReturnMap
+     * @param $minLevelOverride
      * @param string $expectedClass
+     * @param int $expectedLevel
+     * @throws \Exception
      * @dataProvider createDataProvider
      */
     public function testCreate(
-        string $handler,
+        string $handlerName,
         array $repositoryMockReturnMap,
         $minLevelOverride,
         string $expectedClass,
@@ -142,7 +146,7 @@ class HandlerFactoryTest extends TestCase
     ) {
         $this->logConfigMock->expects($this->once())
             ->method('get')
-            ->with($handler)
+            ->with($handlerName)
             ->willReturn($this->repositoryMock);
         $this->repositoryMock->method('get')
             ->willReturnMap($repositoryMockReturnMap);
@@ -156,13 +160,15 @@ class HandlerFactoryTest extends TestCase
                 [LogConfig::LEVEL_NOTICE, Logger::NOTICE],
                 [LogConfig::LEVEL_INFO, Logger::INFO],
                 [LogConfig::LEVEL_WARNING, Logger::WARNING],
+                [LogConfig::LEVEL_DEBUG, Logger::DEBUG],
             ]);
 
-        $handlerInstance = $this->handlerFactory->create($handler);
+        /** @var AbstractHandler $handler */
+        $handler = $this->handlerFactory->create($handlerName);
 
-        $this->assertInstanceOf(HandlerInterface::class, $handlerInstance);
-        $this->assertInstanceOf($expectedClass, $handlerInstance);
-        $this->assertSame($expectedLevel, $handlerInstance->getLevel());
+        $this->assertInstanceOf(HandlerInterface::class, $handler);
+        $this->assertInstanceOf($expectedClass, $handler);
+        $this->assertSame($expectedLevel, $handler->getLevel());
     }
 
     /**
@@ -172,7 +178,7 @@ class HandlerFactoryTest extends TestCase
     public function createDataProvider()
     {
         return [
-            [
+            'stream handler' => [
                 'handler' => HandlerFactory::HANDLER_STREAM,
                 'repositoryMockReturnMap' => [
                     ['stream', null, 'php://stdout'],
@@ -183,7 +189,7 @@ class HandlerFactoryTest extends TestCase
                 'expectedClass' => StreamHandler::class,
                 'expectedLevel' => Logger::INFO,
             ],
-            [
+            'stream handler 2' => [
                 'handler' => HandlerFactory::HANDLER_STREAM,
                 'repositoryMockReturnMap' => [
                     ['stream', null, 'php://stdout'],
@@ -193,18 +199,40 @@ class HandlerFactoryTest extends TestCase
                 'expectedClass' => StreamHandler::class,
                 'expectedLevel' => Logger::WARNING,
             ],
-            [
+            'file handler default' => [
                 'handler' => HandlerFactory::HANDLER_FILE,
                 'repositoryMockReturnMap' => [
-                    ['stream', null, 'var/log/cloud.log'],
-                    ['min_level', LogConfig::LEVEL_NOTICE, LogConfig::LEVEL_NOTICE],
-                    ['min_level', LogConfig::LEVEL_INFO, LogConfig::LEVEL_INFO],
+                    ['file', null, 'var/log/cloud.log'],
+                    ['min_level', LogConfig::LEVEL_NOTICE, LogConfig::LEVEL_DEBUG],
+                    ['min_level', LogConfig::LEVEL_DEBUG, LogConfig::LEVEL_DEBUG],
+                ],
+                'minLevelOverride' => '',
+                'expectedClass' => StreamHandler::class,
+                'expectedLevel' => Logger::DEBUG,
+            ],
+            'file handler min_level overwritten' => [
+                'handler' => HandlerFactory::HANDLER_FILE,
+                'repositoryMockReturnMap' => [
+                    ['file', null, 'var/log/cloud.log'],
+                    ['min_level', LogConfig::LEVEL_NOTICE, LogConfig::LEVEL_INFO],
+                    ['min_level', LogConfig::LEVEL_DEBUG, LogConfig::LEVEL_INFO],
                 ],
                 'minLevelOverride' => '',
                 'expectedClass' => StreamHandler::class,
                 'expectedLevel' => Logger::INFO,
             ],
-            [
+            'file handler MIN_LOGGING_LEVEL overwritten' => [
+                'handler' => HandlerFactory::HANDLER_FILE,
+                'repositoryMockReturnMap' => [
+                    ['file', null, 'var/log/cloud.log'],
+                    ['min_level', LogConfig::LEVEL_INFO, LogConfig::LEVEL_DEBUG],
+                    ['min_level', LogConfig::LEVEL_DEBUG, LogConfig::LEVEL_DEBUG],
+                ],
+                'minLevelOverride' => LogConfig::LEVEL_INFO,
+                'expectedClass' => StreamHandler::class,
+                'expectedLevel' => Logger::DEBUG,
+            ],
+            'slack handler' => [
                 'handler' => HandlerFactory::HANDLER_SLACK,
                 'repositoryMockReturnMap' => [
                     ['token', null, 'someToken'],
@@ -217,7 +245,7 @@ class HandlerFactoryTest extends TestCase
                 'expectedClass' => SlackHandler::class,
                 'expectedLevel' => Logger::NOTICE,
             ],
-            [
+            'slack handler 2' =>[
                 'handler' => HandlerFactory::HANDLER_SLACK,
                 'repositoryMockReturnMap' => [
                     ['token', null, 'someToken'],
@@ -229,7 +257,7 @@ class HandlerFactoryTest extends TestCase
                 'expectedClass' => SlackHandler::class,
                 'expectedLevel' => Logger::WARNING,
             ],
-            [
+            'email handler' => [
                 'handler' => HandlerFactory::HANDLER_EMAIL,
                 'repositoryMockReturnMap' => [
                     ['to', null, 'user@example.com'],
@@ -242,7 +270,7 @@ class HandlerFactoryTest extends TestCase
                 'expectedClass' => NativeMailerHandler::class,
                 'expectedLevel' => Logger::NOTICE,
             ],
-            [
+            'syslog handler' => [
                 'handler' => HandlerFactory::HANDLER_SYSLOG,
                 'repositoryMockReturnMap' => [
                     ['ident', null, 'user@example.com'],
@@ -256,7 +284,7 @@ class HandlerFactoryTest extends TestCase
                 'expectedClass' => SyslogHandler::class,
                 'expectedLevel' => Logger::NOTICE,
             ],
-            [
+            'syslog udp handler' => [
                 'handler' => HandlerFactory::HANDLER_SYSLOG_UDP,
                 'repositoryMockReturnMap' => [
                     ['host', null, '127.0.0.1'],

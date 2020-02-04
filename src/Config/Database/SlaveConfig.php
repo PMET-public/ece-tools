@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Config\Database;
 
 use Magento\MagentoCloud\DB\Data\RelationshipConnectionFactory;
@@ -46,7 +48,7 @@ class SlaveConfig implements ConfigInterface
             $slaveConnection = [
                 'host' => $host,
                 'username' => $connectionData->getUser(),
-                'dbname' => $connectionData->getDBName(),
+                'dbname' => $connectionData->getDbName(),
                 'password' => $connectionData->getPassword(),
                 'model' => 'mysql4',
                 'engine' => 'innodb',

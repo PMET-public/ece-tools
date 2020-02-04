@@ -3,13 +3,17 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Util;
 
+use Magento\MagentoCloud\App\GenericException;
 use Magento\MagentoCloud\Config\Stage\DeployInterface;
 use Magento\MagentoCloud\Filesystem\DirectoryList;
 use Magento\MagentoCloud\Filesystem\Driver\File;
 use Magento\MagentoCloud\Shell\ShellException;
-use Magento\MagentoCloud\Shell\ShellInterface;
+use Magento\MagentoCloud\Shell\MagentoShell;
+use Magento\MagentoCloud\Shell\ShellFactory;
 use Magento\MagentoCloud\Util\MaintenanceModeSwitcher;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -21,9 +25,9 @@ use Psr\Log\LoggerInterface;
 class MaintenanceModeSwitcherTest extends TestCase
 {
     /**
-     * @var ShellInterface|MockObject
+     * @var MagentoShell|MockObject
      */
-    private $shellMock;
+    private $magentoShellMock;
 
     /**
      * @var LoggerInterface|MockObject
@@ -55,14 +59,19 @@ class MaintenanceModeSwitcherTest extends TestCase
      */
     protected function setUp()
     {
-        $this->shellMock = $this->getMockForAbstractClass(ShellInterface::class);
+        $this->magentoShellMock = $this->createMock(MagentoShell::class);
         $this->loggerMock = $this->getMockForAbstractClass(LoggerInterface::class);
         $this->stageConfigMock = $this->getMockForAbstractClass(DeployInterface::class);
         $this->fileMock = $this->createMock(File::class);
         $this->directoryListMock = $this->createMock(DirectoryList::class);
+        /** @var ShellFactory|MockObject $shellFactoryMock */
+        $shellFactoryMock = $this->createMock(ShellFactory::class);
+        $shellFactoryMock->expects($this->once())
+            ->method('createMagento')
+            ->willReturn($this->magentoShellMock);
 
         $this->maintenanceModeSwitcher = new MaintenanceModeSwitcher(
-            $this->shellMock,
+            $shellFactoryMock,
             $this->loggerMock,
             $this->stageConfigMock,
             $this->fileMock,
@@ -70,6 +79,9 @@ class MaintenanceModeSwitcherTest extends TestCase
         );
     }
 
+    /**
+     * @throws GenericException
+     */
     public function testEnable()
     {
         $this->stageConfigMock->expects($this->once())
@@ -79,9 +91,9 @@ class MaintenanceModeSwitcherTest extends TestCase
         $this->loggerMock->expects($this->once())
             ->method('notice')
             ->with('Enabling Maintenance mode');
-        $this->shellMock->expects($this->once())
+        $this->magentoShellMock->expects($this->once())
             ->method('execute')
-            ->with('php ./bin/magento maintenance:enable --ansi --no-interaction -v');
+            ->with('maintenance:enable', ['-v']);
         $this->loggerMock->expects($this->never())
             ->method('warning');
         $this->fileMock->expects($this->never())
@@ -92,6 +104,9 @@ class MaintenanceModeSwitcherTest extends TestCase
         $this->maintenanceModeSwitcher->enable();
     }
 
+    /**
+     * @throws GenericException
+     */
     public function testEnableCommandException()
     {
         $this->stageConfigMock->expects($this->once())
@@ -101,9 +116,9 @@ class MaintenanceModeSwitcherTest extends TestCase
         $this->loggerMock->expects($this->once())
             ->method('notice')
             ->with('Enabling Maintenance mode');
-        $this->shellMock->expects($this->once())
+        $this->magentoShellMock->expects($this->once())
             ->method('execute')
-            ->with('php ./bin/magento maintenance:enable --ansi --no-interaction -v')
+            ->with('maintenance:enable', ['-v'])
             ->willThrowException(new ShellException('command error'));
         $this->loggerMock->expects($this->once())
             ->method('warning')
@@ -118,6 +133,9 @@ class MaintenanceModeSwitcherTest extends TestCase
         $this->maintenanceModeSwitcher->enable();
     }
 
+    /**
+     * @throws GenericException
+     */
     public function testDisable()
     {
         $this->stageConfigMock->expects($this->once())
@@ -127,28 +145,27 @@ class MaintenanceModeSwitcherTest extends TestCase
         $this->loggerMock->expects($this->once())
             ->method('notice')
             ->with('Maintenance mode is disabled.');
-        $this->shellMock->expects($this->once())
+        $this->magentoShellMock->expects($this->once())
             ->method('execute')
-            ->with('php ./bin/magento maintenance:disable --ansi --no-interaction -v');
+            ->with('maintenance:disable', ['-v']);
 
         $this->maintenanceModeSwitcher->disable();
     }
 
-    /**
-     * @expectedException \RuntimeException
-     * @expectedExceptionMessage command error
-     */
     public function testDisableCommandException()
     {
+        $this->expectException(GenericException::class);
+        $this->expectExceptionMessage('command error');
+
         $this->stageConfigMock->expects($this->once())
             ->method('get')
             ->with(DeployInterface::VAR_VERBOSE_COMMANDS)
             ->willReturn('-v');
         $this->loggerMock->expects($this->never())
             ->method('notice');
-        $this->shellMock->expects($this->once())
+        $this->magentoShellMock->expects($this->once())
             ->method('execute')
-            ->with('php ./bin/magento maintenance:disable --ansi --no-interaction -v')
+            ->with('maintenance:disable', ['-v'])
             ->willThrowException(new ShellException('command error'));
 
         $this->maintenanceModeSwitcher->disable();

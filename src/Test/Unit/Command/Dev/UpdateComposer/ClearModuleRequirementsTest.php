@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Command\Dev\UpdateComposer;
 
 use Magento\MagentoCloud\Command\Dev\UpdateComposer\ClearModuleRequirements;
@@ -31,6 +33,9 @@ class ClearModuleRequirementsTest extends TestCase
      */
     private $clearModuleRequirements;
 
+    /**
+     * @inheritdoc
+     */
     protected function setUp()
     {
         $this->directoryListMock = $this->createMock(DirectoryList::class);
@@ -53,7 +58,7 @@ class ClearModuleRequirementsTest extends TestCase
             ->withConsecutive(
                 [
                     '/root/clear_module_requirements.php',
-                    $this->stringContains('foreach ([\'repo1\', \'repo2\'] as $repoName)')
+                    file_get_contents(__DIR__ . '/_files/clear_module_requirements.php'),
                 ],
                 [
                     '/root/.gitignore',
@@ -62,6 +67,20 @@ class ClearModuleRequirementsTest extends TestCase
                 ]
             );
 
-        $this->clearModuleRequirements->generate(['repo1', 'repo2']);
+        $this->clearModuleRequirements->generate([
+            'repo1' => [
+                'branch' => '1.2',
+                'repo' => 'https://token@repo1.com',
+            ],
+            'repo2' => [
+                'branch' => '2.2',
+                'repo' => 'https://token@repo2.com',
+            ],
+            'repo3' => [
+                'branch' => '2.3',
+                'repo' => 'https://token@repo2.com',
+                'type' => 'single-package'
+            ],
+        ]);
     }
 }

@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Util;
 
 use Magento\MagentoCloud\Package\MagentoVersion;
@@ -55,7 +57,7 @@ class PhpFormatter
      * @param int $depth
      * @return string
      */
-    private function varExportShort($var, int $depth = 1): string
+    public function varExportShort($var, int $depth = 1): string
     {
         if (!is_array($var)) {
             return var_export($var, true);

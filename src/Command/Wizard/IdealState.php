@@ -3,17 +3,22 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Command\Wizard;
 
 use Magento\MagentoCloud\Command\Wizard\Util\OutputFormatter;
 use Magento\MagentoCloud\Config\Validator\IdealState as IdealStateValidator;
+use Magento\MagentoCloud\Config\Validator\Result\Error;
 use Magento\MagentoCloud\Config\Validator\Result\Success;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * @inheritdoc
+ * Verifies ideal state of configuration
+ *
+ * @api
  */
 class IdealState extends Command
 {
@@ -59,11 +64,12 @@ class IdealState extends Command
     {
         $message = 'The configured state is ideal';
 
-        if (!($result = $this->validator->validate()) instanceof Success) {
+        if (($result = $this->validator->validate()) instanceof Error) {
+            /** @var Error $result */
             $message = $result->getError();
 
             foreach ($this->validator->getErrors() as $error) {
-                $this->outputFormatter->writeItem($output, $error);
+                $this->outputFormatter->writeItem($output, $error->getError());
             }
         }
 

@@ -3,15 +3,18 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Config\Stage;
 
+use Magento\MagentoCloud\Config\ConfigException;
 use Magento\MagentoCloud\Config\Schema;
 use Magento\MagentoCloud\Config\Stage\PostDeploy;
 use Magento\MagentoCloud\Config\Stage\PostDeployInterface;
 use Magento\MagentoCloud\Config\StageConfigInterface;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Magento\MagentoCloud\Config\Environment\Reader as EnvironmentReader;
-use PHPUnit_Framework_MockObject_MockObject as Mock;
 
 /**
  * @inheritdoc
@@ -24,12 +27,12 @@ class PostDeployTest extends TestCase
     private $config;
 
     /**
-     * @var EnvironmentReader|Mock
+     * @var EnvironmentReader|MockObject
      */
     private $environmentReaderMock;
 
     /**
-     * @var Schema|Mock
+     * @var Schema|MockObject
      */
     private $schemaMock;
 
@@ -40,8 +43,7 @@ class PostDeployTest extends TestCase
     {
         $this->environmentReaderMock = $this->createMock(EnvironmentReader::class);
         $this->schemaMock = $this->createMock(Schema::class);
-        $this->schemaMock->expects($this->any())
-            ->method('getDefaults')
+        $this->schemaMock->method('getDefaults')
             ->with(StageConfigInterface::STAGE_POST_DEPLOY)
             ->willReturn([
                 PostDeployInterface::VAR_WARM_UP_PAGES => ['index.php']
@@ -58,11 +60,12 @@ class PostDeployTest extends TestCase
      * @param array $envConfig
      * @param mixed $expectedValue
      * @dataProvider getDataProvider
+     *
+     * @throws ConfigException
      */
-    public function testGet(string $name, array $envConfig, $expectedValue)
+    public function testGet(string $name, array $envConfig, $expectedValue): void
     {
-        $this->environmentReaderMock->expects($this->any())
-            ->method('read')
+        $this->environmentReaderMock->method('read')
             ->willReturn([PostDeploy::SECTION_STAGE => $envConfig]);
 
         $this->assertSame($expectedValue, $this->config->get($name));
@@ -98,15 +101,32 @@ class PostDeployTest extends TestCase
     }
 
     /**
-     * @expectedException \RuntimeException
-     * @expectedExceptionMessage Config NOT_EXISTS_VALUE was not defined.
+     * @throws ConfigException
      */
-    public function testNotExists()
+    public function testNotExists(): void
     {
-        $this->environmentReaderMock->expects($this->any())
+        $this->expectException(ConfigException::class);
+        $this->expectExceptionMessage('Config NOT_EXISTS_VALUE was not defined.');
+
+        $this->environmentReaderMock->expects($this->never())
             ->method('read')
             ->willReturn([]);
 
         $this->config->get('NOT_EXISTS_VALUE');
+    }
+
+    /**
+     * @throws ConfigException
+     */
+    public function testCannotMerge(): void
+    {
+        $this->expectException(ConfigException::class);
+        $this->expectExceptionMessage('Some error');
+
+        $this->environmentReaderMock->expects($this->once())
+            ->method('read')
+            ->willThrowException(new \Exception('Some error'));
+
+        $this->config->get(PostDeploy::VAR_WARM_UP_PAGES);
     }
 }

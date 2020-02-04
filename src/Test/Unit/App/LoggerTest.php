@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\App;
 
 use Magento\MagentoCloud\App\Logger;
@@ -94,8 +96,8 @@ class LoggerTest extends TestCase
         $this->fileMock->expects($this->exactly($fileMockFileGetContentsExpects))
             ->method('fileGetContents')
             ->willReturnMap([
-                [$buildPhaseLogPath, null, null, $buildPhaseLogContent],
-                [$deployLogPath, null, null, $deployLogContent],
+                [$buildPhaseLogPath, false, null, $buildPhaseLogContent],
+                [$deployLogPath, false, null, $deployLogContent],
             ]);
         $this->fileMock->expects($this->exactly(2))
             ->method('isExists')

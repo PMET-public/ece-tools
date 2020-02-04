@@ -3,11 +3,13 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Config\Factory;
 
 use Magento\MagentoCloud\Config\ConfigMerger;
-use Magento\MagentoCloud\Config\Environment;
 use Magento\MagentoCloud\Config\Stage\DeployInterface;
+use Magento\MagentoCloud\Service\Redis;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -16,9 +18,19 @@ use Psr\Log\LoggerInterface;
 class Cache
 {
     /**
-     * @var Environment
+     * Redis database to store default cache data
      */
-    private $environment;
+    const REDIS_DATABASE_DEFAULT = 1;
+
+    /**
+     * Redis database to store page cache data
+     */
+    const REDIS_DATABASE_PAGE_CACHE = 2;
+
+    /**
+     * @var Redis
+     */
+    private $redis;
 
     /**
      * @var DeployInterface
@@ -36,18 +48,18 @@ class Cache
     private $configMerger;
 
     /**
-     * @param Environment $environment
+     * @param Redis $redis
      * @param DeployInterface $stageConfig
      * @param LoggerInterface $logger
      * @param ConfigMerger $configMerger
      */
     public function __construct(
-        Environment $environment,
+        Redis $redis,
         DeployInterface $stageConfig,
         LoggerInterface $logger,
         ConfigMerger $configMerger
     ) {
-        $this->environment = $environment;
+        $this->redis = $redis;
         $this->stageConfig = $stageConfig;
         $this->logger = $logger;
         $this->configMerger = $configMerger;
@@ -82,7 +94,7 @@ class Cache
             return $this->configMerger->clear($envCacheConfiguration);
         }
 
-        $redisConfig = $this->environment->getRelationship('redis');
+        $redisConfig = $this->redis->getConfiguration();
 
         if (empty($redisConfig)) {
             return [];
@@ -91,9 +103,8 @@ class Cache
         $redisCache = [
             'backend' => 'Cm_Cache_Backend_Redis',
             'backend_options' => [
-                'server' => $redisConfig[0]['host'],
-                'port' => $redisConfig[0]['port'],
-                'database' => 1,
+                'server' => $redisConfig['host'],
+                'port' => $redisConfig['port'],
             ],
         ];
 
@@ -101,6 +112,9 @@ class Cache
         if ($slaveConnectionData) {
             if ($this->isConfigurationCompatibleWithSlaveConnection($envCacheConfiguration, $redisConfig)) {
                 $redisCache['backend_options']['load_from_slave'] = $slaveConnectionData;
+                $redisCache['backend_options']['read_timeout'] = 1;
+                $redisCache['backend_options']['retry_reads_on_master'] = 1;
+                $redisCache['frontend_options']['write_control'] = false;
                 $this->logger->info('Set Redis slave connection');
             } else {
                 $this->logger->notice(
@@ -113,10 +127,16 @@ class Cache
             }
         }
 
-        return $this->configMerger->mergeConfigs([
+        return $this->configMerger->merge([
             'frontend' => [
-                'default' => $redisCache,
-                'page_cache' => $redisCache,
+                'default' => array_replace_recursive(
+                    $redisCache,
+                    ['backend_options' => ['database' => self::REDIS_DATABASE_DEFAULT]]
+                ),
+                'page_cache' => array_replace_recursive(
+                    $redisCache,
+                    ['backend_options' => ['database' => self::REDIS_DATABASE_PAGE_CACHE]]
+                ),
             ],
         ], $envCacheConfiguration);
     }
@@ -141,13 +161,13 @@ class Cache
     private function getSlaveConnection(): array
     {
         $connectionData = [];
-        $redisSlaveConfig = $this->environment->getRelationship('redis-slave');
-        $slaveHost = $redisSlaveConfig[0]['host'] ?? null;
+        $redisSlaveConfig = $this->redis->getSlaveConfiguration();
+        $slaveHost = $redisSlaveConfig['host'] ?? null;
 
         if ($this->stageConfig->get(DeployInterface::VAR_REDIS_USE_SLAVE_CONNECTION) && $slaveHost) {
             $connectionData = [
                 'server' => $slaveHost,
-                'port' => $redisSlaveConfig[0]['port'] ?? '',
+                'port' => $redisSlaveConfig['port'] ?? '',
             ];
         }
 
@@ -170,9 +190,9 @@ class Cache
     ): bool {
         foreach (['default', 'page_cache'] as $type) {
             if ((isset($envCacheConfig['frontend'][$type]['backend_options']['server'])
-                    && $envCacheConfig['frontend'][$type]['backend_options']['server'] !== $redisConfig[0]['host'])
+                    && $envCacheConfig['frontend'][$type]['backend_options']['server'] !== $redisConfig['host'])
                 || (isset($envCacheConfig['frontend'][$type]['backend_options']['port'])
-                    && $envCacheConfig['frontend'][$type]['backend_options']['port'] !== $redisConfig[0]['port'])
+                    && $envCacheConfig['frontend'][$type]['backend_options']['port'] !== $redisConfig['port'])
             ) {
                 return false;
             }

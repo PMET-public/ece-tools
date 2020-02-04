@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Config\Validator\Deploy;
 
 use Magento\MagentoCloud\Config\Validator\Deploy\AppropriateVersion;
@@ -82,7 +84,7 @@ class AppropriateVersionTest extends TestCase
         $this->magentoVersion->expects($this->once())
             ->method('satisfies')
             ->willReturn(false);
-        $this->configurationCheckerMock->expects($this->exactly(3))
+        $this->configurationCheckerMock->expects($this->exactly(4))
             ->method('isConfigured')
             ->willReturn(false);
 
@@ -98,7 +100,7 @@ class AppropriateVersionTest extends TestCase
         $this->magentoVersion->expects($this->once())
             ->method('satisfies')
             ->willReturn(false);
-        $this->configurationCheckerMock->expects($this->exactly(3))
+        $this->configurationCheckerMock->expects($this->exactly(4))
             ->method('isConfigured')
             ->willReturn(true);
         $this->resultFactoryMock->expects($this->once())
@@ -108,6 +110,7 @@ class AppropriateVersionTest extends TestCase
                 implode(PHP_EOL, [
                     'CRON_CONSUMERS_RUNNER is available for Magento 2.2.0 and later.',
                     'SCD_STRATEGY is available for Magento 2.2.0 and later.',
+                    'SCD_MAX_EXECUTION_TIME is available for Magento 2.2.0 and later.',
                     'GENERATED_CODE_SYMLINK is available for Magento 2.1.x.'
                 ])
             );

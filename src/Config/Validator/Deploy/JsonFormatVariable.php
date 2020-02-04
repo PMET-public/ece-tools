@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Config\Validator\Deploy;
 
 use Magento\MagentoCloud\Config\Schema;
@@ -58,7 +60,7 @@ class JsonFormatVariable implements ValidatorInterface
 
             foreach ($this->schema->getSchema() as $optionName => $optionConfig) {
                 if ($optionConfig[Schema::SCHEMA_TYPE] !== ['array'] ||
-                    !in_array(StageConfigInterface::STAGE_DEPLOY, $optionConfig[Schema::SCHEMA_STAGE]) ||
+                    !in_array(StageConfigInterface::STAGE_DEPLOY, $optionConfig[Schema::SCHEMA_STAGES]) ||
                     !is_string($this->mergedConfig->get()[$optionName])
                 ) {
                     continue;

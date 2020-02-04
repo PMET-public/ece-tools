@@ -3,10 +3,12 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Config\Database;
 
 use Magento\MagentoCloud\Config\ConfigMerger;
-use Magento\MagentoCloud\Config\Deploy\Reader as ConfigReader;
+use Magento\MagentoCloud\Config\Magento\Env\ReaderInterface as ConfigReader;
 use Magento\MagentoCloud\Config\Stage\DeployInterface;
 use Magento\MagentoCloud\DB\Data\ConnectionInterface;
 use Magento\MagentoCloud\DB\Data\RelationshipConnectionFactory;
@@ -59,6 +61,13 @@ class MergedConfig implements ConfigInterface
     private $mergedConfig;
 
     /**
+     * Factory for creation database configurations
+     *
+     * @var RelationshipConnectionFactory
+     */
+    private $connectionFactory;
+
+    /**
      * @param RelationshipConnectionFactory $connectionFactory
      * @param ConfigReader $configReader
      * @param SlaveConfig $slaveConfig
@@ -72,7 +81,7 @@ class MergedConfig implements ConfigInterface
         DeployInterface $stageConfig,
         ConfigMerger $configMerger
     ) {
-        $this->connectionData = $connectionFactory->create(RelationshipConnectionFactory::CONNECTION_MAIN);
+        $this->connectionFactory = $connectionFactory;
         $this->configReader = $configReader;
         $this->slaveConfig = $slaveConfig;
         $this->stageConfig = $stageConfig;
@@ -96,28 +105,27 @@ class MergedConfig implements ConfigInterface
             return $this->mergedConfig = $this->configMerger->clear($envDbConfig);
         }
 
-        if (!empty($this->connectionData->getHost())) {
+        if (!empty($this->getConnectionData()->getHost())) {
             $dbConfig = $this->generateDbConfig();
         } else {
             $dbConfig = $this->getDbConfigFromEnvFile();
         }
 
-        return $this->mergedConfig = $this->configMerger->mergeConfigs($dbConfig, $envDbConfig);
+        return $this->mergedConfig = $this->configMerger->merge($dbConfig, $envDbConfig);
     }
 
     /**
      * Generates database configuration from environment relationships.
      *
-     * @param array envDbConfig
      * @return array
      */
     private function generateDbConfig(): array
     {
         $connectionData = [
-            'username' => $this->connectionData->getUser(),
-            'host' => $this->connectionData->getHost(),
-            'dbname' => $this->connectionData->getDbName(),
-            'password' => $this->connectionData->getPassword(),
+            'username' => $this->getConnectionData()->getUser(),
+            'host' => $this->getConnectionData()->getHost(),
+            'dbname' => $this->getConnectionData()->getDbName(),
+            'password' => $this->getConnectionData()->getPassword(),
         ];
 
         $dbConfig = [
@@ -155,9 +163,9 @@ class MergedConfig implements ConfigInterface
         $envDbConfig = $this->stageConfig->get(DeployInterface::VAR_DATABASE_CONFIGURATION);
 
         if ((isset($envDbConfig['connection']['default']['host'])
-                && $envDbConfig['connection']['default']['host'] !== $this->connectionData->getHost())
+                && $envDbConfig['connection']['default']['host'] !== $this->getConnectionData()->getHost())
             || (isset($envDbConfig['connection']['default']['dbname'])
-                && $envDbConfig['connection']['default']['dbname'] !== $this->connectionData->getDbName())
+                && $envDbConfig['connection']['default']['dbname'] !== $this->getConnectionData()->getDbName())
         ) {
             return false;
         }
@@ -175,5 +183,19 @@ class MergedConfig implements ConfigInterface
     private function getDbConfigFromEnvFile(): array
     {
         return $this->configReader->read()['db'] ?? [];
+    }
+
+    /**
+     * Returns connection data from relationship array
+     *
+     * @return ConnectionInterface
+     */
+    private function getConnectionData(): ConnectionInterface
+    {
+        if (!$this->connectionData instanceof ConnectionInterface) {
+            $this->connectionData = $this->connectionFactory->create(RelationshipConnectionFactory::CONNECTION_MAIN);
+        }
+
+        return $this->connectionData;
     }
 }

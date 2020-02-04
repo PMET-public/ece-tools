@@ -3,6 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+declare(strict_types=1);
+
 namespace Magento\MagentoCloud\Test\Unit\Config\Validator\Deploy\Variable;
 
 use Magento\MagentoCloud\Config\Environment;
@@ -140,7 +142,7 @@ class ConfigurationCheckerTest extends TestCase
             ->willReturn([]);
         $this->environmentReaderMock->expects($this->any())
             ->method('read')
-            ->willThrowException(new FileSystemException());
+            ->willThrowException(new FileSystemException('Some error'));
 
         $this->assertFalse($this->checker->isConfigured('test'));
     }
