@@ -47,6 +47,7 @@
   },
   "replace": {
     "magento/ece-patches": "*",
+    "magento/ece-tools": "*",
     "magento/magento-cloud-configuration": "*"
   },
   "bin": [
