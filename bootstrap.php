@@ -8,10 +8,7 @@ date_default_timezone_set('UTC');
 
 require_once __DIR__ . '/autoload.php';
 
-use Magento\MagentoCloud\App\Container;
-use Magento\MagentoCloud\App\ErrorHandler;
-
-$handler = new ErrorHandler();
+$handler = new \Magento\MagentoCloud\App\ErrorHandler();
 set_error_handler([$handler, 'handle']);
 
-return new Container(ECE_BP, BP);
+return new \Magento\MagentoCloud\App\Container(ECE_BP, BP);

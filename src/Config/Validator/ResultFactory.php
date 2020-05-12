@@ -3,10 +3,9 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config\Validator;
 
+use Magento\MagentoCloud\App\ContainerInterface;
 use Magento\MagentoCloud\Config\Validator\Result\Error;
 use Magento\MagentoCloud\Config\Validator\Result\Success;
 
@@ -15,6 +14,19 @@ use Magento\MagentoCloud\Config\Validator\Result\Success;
  */
 class ResultFactory
 {
+    /**
+     * @var ContainerInterface
+     */
+    private $container;
+
+    /**
+     * @param ContainerInterface $container
+     */
+    public function __construct(ContainerInterface $container)
+    {
+        $this->container = $container;
+    }
+
     /**
      * Creates instance of ResultInterface object
      *
@@ -39,7 +51,7 @@ class ResultFactory
      */
     public function success(): Success
     {
-        return new Success();
+        return $this->container->create(Success::class);
     }
 
     /**
@@ -49,6 +61,9 @@ class ResultFactory
      */
     public function error(string $message, string $suggestion = ''): Error
     {
-        return new Error($message, $suggestion);
+        return $this->container->create(Error::class, [
+            'message' => $message,
+            'suggestion' => $suggestion,
+        ]);
     }
 }

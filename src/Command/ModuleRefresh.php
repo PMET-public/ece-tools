@@ -3,37 +3,40 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Command;
 
-use Magento\MagentoCloud\Config\Module;
-use Magento\MagentoCloud\Filesystem\FileSystemException;
-use Magento\MagentoCloud\Shell\ShellException;
+use Magento\MagentoCloud\Process\ProcessException;
+use Magento\MagentoCloud\Process\ProcessInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Performs module:refresh command
- *
- * @api
+ * Performs module
  */
 class ModuleRefresh extends Command
 {
-    public const NAME = 'module:refresh';
+    const NAME = 'module:refresh';
 
     /**
-     * @var Module
+     * @var ProcessInterface
      */
-    private $module;
+    private $process;
 
     /**
-     * @param Module $module
+     * @var LoggerInterface
      */
-    public function __construct(Module $module)
+    private $logger;
+
+    /**
+     * @param ProcessInterface $process
+     * @param LoggerInterface $logger
+     */
+    public function __construct(ProcessInterface $process, LoggerInterface $logger)
     {
-        $this->module = $module;
+        $this->process = $process;
+        $this->logger = $logger;
 
         parent::__construct();
     }
@@ -48,19 +51,18 @@ class ModuleRefresh extends Command
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      *
-     * @throws ShellException
-     * @throws FileSystemException
+     * @throws ProcessException
      */
     public function execute(InputInterface $input, OutputInterface $output)
     {
-        $enabledModules = $this->module->refresh();
+        try {
+            $this->process->execute();
+        } catch (ProcessException $exception) {
+            $this->logger->critical($exception->getMessage());
 
-        $output->writeln(
-            $enabledModules ?
-                'The following modules have been enabled:' . PHP_EOL . implode(PHP_EOL, $enabledModules) :
-                'No modules were changed.'
-        );
+            throw $exception;
+        }
     }
 }

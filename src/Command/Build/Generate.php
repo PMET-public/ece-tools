@@ -3,12 +3,11 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Command\Build;
 
-use Magento\MagentoCloud\Scenario\Exception\ProcessorException;
-use Magento\MagentoCloud\Scenario\Processor;
+use Magento\MagentoCloud\Package\Manager as PackageManager;
+use Magento\MagentoCloud\Process\ProcessInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,24 +15,39 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * CLI command that used as part of build hook.
  * Responsible for patches applying, validating configuration, preparing the codebase, etc.
- *
- * @api
  */
 class Generate extends Command
 {
     const NAME = 'build:generate';
 
     /**
-     * @var Processor
+     * @var ProcessInterface
      */
-    private $processor;
+    private $process;
 
     /**
-     * @param Processor $processor
+     * @var LoggerInterface
      */
-    public function __construct(Processor $processor)
-    {
-        $this->processor = $processor;
+    private $logger;
+
+    /**
+     * @var PackageManager
+     */
+    private $packageManager;
+
+    /**
+     * @param ProcessInterface $process
+     * @param LoggerInterface $logger
+     * @param PackageManager $packageManager
+     */
+    public function __construct(
+        ProcessInterface $process,
+        LoggerInterface $logger,
+        PackageManager $packageManager
+    ) {
+        $this->process = $process;
+        $this->logger = $logger;
+        $this->packageManager = $packageManager;
 
         parent::__construct();
     }
@@ -52,12 +66,18 @@ class Generate extends Command
     /**
      * {@inheritdoc}
      *
-     * @throws ProcessorException
+     * @throws \Throwable
      */
     public function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->processor->execute([
-            'scenario/build/generate.xml'
-        ]);
+        try {
+            $this->logger->notice('Starting generate command. ' . $this->packageManager->getPrettyInfo());
+            $this->process->execute();
+            $this->logger->notice('Generate command completed.');
+        } catch (\Throwable $e) {
+            $this->logger->critical($e->getMessage());
+
+            throw $e;
+        }
     }
 }

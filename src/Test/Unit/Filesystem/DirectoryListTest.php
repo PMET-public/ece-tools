@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Filesystem;
 
 use Magento\MagentoCloud\Filesystem\DirectoryList;
@@ -17,11 +15,12 @@ use PHPUnit\Framework\TestCase;
  */
 class DirectoryListTest extends TestCase
 {
+    /**
+     * @expectedExceptionMessage Code some_code is not registered
+     * @expectedException \RuntimeException
+     */
     public function testGetPathWithException()
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Code some_code is not registered');
-
         $this->get22DirectoryList()->getPath('some_code');
     }
 
@@ -160,18 +159,6 @@ class DirectoryListTest extends TestCase
             [$this->get21DirectoryList(), $relative21Paths],
             [$this->get22DirectoryList(), $relative22Paths],
         ];
-    }
-
-    /**
-     * @param DirectoryList $directoryList
-     * @dataProvider getDirectoryLists
-     */
-    public function testGetPatches(DirectoryList $directoryList)
-    {
-        $this->assertSame(
-            __DIR__ . '/_files/bp/patches',
-            $directoryList->getPatches()
-        );
     }
 
     /**

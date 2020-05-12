@@ -3,18 +3,15 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Command;
 
 use Magento\MagentoCloud\Command\ModuleRefresh;
-use Magento\MagentoCloud\Config\Module;
-use Magento\MagentoCloud\Filesystem\FileSystemException;
-use Magento\MagentoCloud\Shell\ShellException;
+use Magento\MagentoCloud\Process\ProcessException;
+use Magento\MagentoCloud\Process\ProcessInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Console\Tester\CommandTester;
 
 /**
  * @inheritdoc
@@ -27,63 +24,58 @@ class ModuleRefreshTest extends TestCase
     private $command;
 
     /**
-     * @var Module|MockObject
+     * @var ProcessInterface|MockObject
      */
-    private $moduleMock;
+    private $processMock;
+
+    /**
+     * @var LoggerInterface|MockObject
+     */
+    private $loggerMock;
 
     /**
      * @inheritdoc
      */
     protected function setUp()
     {
-        $this->moduleMock = $this->createMock(Module::class);
+        $this->processMock = $this->getMockForAbstractClass(ProcessInterface::class);
+        $this->loggerMock = $this->getMockForAbstractClass(LoggerInterface::class);
 
         $this->command = new ModuleRefresh(
-            $this->moduleMock
+            $this->processMock,
+            $this->loggerMock
         );
     }
 
-    /**
-     * @throws FileSystemException
-     * @throws ShellException
-     */
-    public function testExecute(): void
+    public function testExecute()
     {
-        /** @var InputInterface|MockObject $inputMock */
-        $inputMock = $this->getMockForAbstractClass(InputInterface::class);
-        /** @var OutputInterface|MockObject $outputMock */
-        $outputMock = $this->getMockForAbstractClass(OutputInterface::class);
+        $this->processMock->expects($this->once())
+            ->method('execute');
+        $this->loggerMock->expects($this->never())
+            ->method('critical');
 
-        $outputMock->expects($this->once())
-            ->method('writeln')
-            ->with("The following modules have been enabled:\nMagento_Demo");
-
-        $this->moduleMock->expects($this->once())
-            ->method('refresh')
-            ->willReturn(['Magento_Demo']);
-
-        $this->command->execute($inputMock, $outputMock);
+        $tester = new CommandTester(
+            $this->command
+        );
+        $tester->execute([]);
     }
 
     /**
-     * @throws FileSystemException
-     * @throws ShellException
+     * @expectedException \Magento\MagentoCloud\Process\ProcessException
+     * @expectedExceptionMessage Some error
      */
-    public function testExecuteNoModules(): void
+    public function testExecuteWithException()
     {
-        /** @var InputInterface|MockObject $inputMock */
-        $inputMock = $this->getMockForAbstractClass(InputInterface::class);
-        /** @var OutputInterface|MockObject $outputMock */
-        $outputMock = $this->getMockForAbstractClass(OutputInterface::class);
+        $this->processMock->expects($this->once())
+            ->method('execute')
+            ->willThrowException(new ProcessException('Some error'));
+        $this->loggerMock->expects($this->once())
+            ->method('critical')
+            ->with('Some error');
 
-        $outputMock->expects($this->once())
-            ->method('writeln')
-            ->with('No modules were changed.');
-
-        $this->moduleMock->expects($this->once())
-            ->method('refresh')
-            ->willReturn([]);
-
-        $this->command->execute($inputMock, $outputMock);
+        $tester = new CommandTester(
+            $this->command
+        );
+        $tester->execute([]);
     }
 }

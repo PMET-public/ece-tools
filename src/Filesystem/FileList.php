@@ -3,11 +3,7 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Filesystem;
-
-use Magento\MagentoCloud\Package\UndefinedPackageException;
 
 /**
  * Resolver of file configurations.
@@ -32,7 +28,6 @@ class FileList extends ConfigFileList
 
     /**
      * @return string
-     * @throws UndefinedPackageException
      */
     public function getCloudLog(): string
     {
@@ -41,7 +36,6 @@ class FileList extends ConfigFileList
 
     /**
      * @return string
-     * @throws UndefinedPackageException
      */
     public function getTtfbLog(): string
     {
@@ -50,7 +44,6 @@ class FileList extends ConfigFileList
 
     /**
      * @return string
-     * @throws UndefinedPackageException
      */
     public function getInitCloudLog(): string
     {
@@ -59,19 +52,10 @@ class FileList extends ConfigFileList
 
     /**
      * @return string
-     * @throws UndefinedPackageException
      */
     public function getInstallUpgradeLog(): string
     {
         return $this->directoryList->getLog() . '/install_upgrade.log';
-    }
-
-    /**
-     * @return string
-     */
-    public function getPatches(): string
-    {
-        return $this->directoryList->getRoot() . '/patches.json';
     }
 
     /**
@@ -112,24 +96,6 @@ class FileList extends ConfigFileList
     public function getServicesConfig(): string
     {
         return $this->directoryList->getMagentoRoot() . '/.magento/services.yaml';
-    }
-
-    /**
-     * Return the path to the service EOL configuration file.
-     *
-     * @return string
-     */
-    public function getServiceEolsConfig(): string
-    {
-        return $this->directoryList->getRoot() . '/config/eol.yaml';
-    }
-
-    /**
-     * @return string
-     */
-    public function getEnvDistConfig(): string
-    {
-        return $this->directoryList->getMagentoRoot() . '/.magento.env.md';
     }
 
     /**

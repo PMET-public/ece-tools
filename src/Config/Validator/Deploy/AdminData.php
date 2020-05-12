@@ -3,12 +3,10 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config\Validator\Deploy;
 
-use Magento\MagentoCloud\Config\AdminDataInterface;
 use Magento\MagentoCloud\Config\State;
+use Magento\MagentoCloud\Config\Environment;
 use Magento\MagentoCloud\Config\ValidatorInterface;
 use Magento\MagentoCloud\Config\Validator\ResultFactory;
 use Magento\MagentoCloud\Config\Validator\ResultInterface;
@@ -25,14 +23,15 @@ class AdminData implements ValidatorInterface
     private $state;
 
     /**
-     * @var AdminDataInterface
+     * @var Environment
      */
-    private $adminData;
+    private $environment;
 
     /**
      * @var ResultFactory
      */
     private $resultFactory;
+
     /**
      * Validates if database configured properly.
      *
@@ -42,18 +41,18 @@ class AdminData implements ValidatorInterface
 
     /**
      * @param State $state
-     * @param AdminDataInterface $adminData
+     * @param Environment $environment
      * @param DatabaseConfiguration $databaseConfiguration
      * @param ResultFactory $resultFactory
      */
     public function __construct(
         State $state,
-        AdminDataInterface $adminData,
+        Environment $environment,
         DatabaseConfiguration $databaseConfiguration,
         ResultFactory $resultFactory
     ) {
         $this->state = $state;
-        $this->adminData = $adminData;
+        $this->environment = $environment;
         $this->databaseConfiguration = $databaseConfiguration;
         $this->resultFactory = $resultFactory;
     }
@@ -75,7 +74,7 @@ class AdminData implements ValidatorInterface
                 );
             }
 
-            if (!$this->adminData->getEmail() && $data) {
+            if (!$this->environment->getAdminEmail() && $data) {
                 return $this->resultFactory->error(
                     'The following admin data was ignored and an admin was not created because admin email is not set: '
                     . implode(', ', $data),
@@ -96,23 +95,23 @@ class AdminData implements ValidatorInterface
     {
         $data = [];
 
-        if ($this->adminData->getEmail()) {
+        if ($this->environment->getAdminEmail()) {
             $data[] = 'admin email';
         }
 
-        if ($this->adminData->getUsername()) {
+        if ($this->environment->getAdminUsername()) {
             $data[] = 'admin login';
         }
 
-        if ($this->adminData->getFirstName()) {
+        if ($this->environment->getAdminFirstname()) {
             $data[] = 'admin first name';
         }
 
-        if ($this->adminData->getLastName()) {
+        if ($this->environment->getAdminLastname()) {
             $data[] = 'admin last name';
         }
 
-        if ($this->adminData->getPassword()) {
+        if ($this->environment->getAdminPassword()) {
             $data[] = 'admin password';
         }
 

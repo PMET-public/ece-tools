@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Package;
 
 use Composer\Composer;
@@ -141,11 +139,12 @@ class ManagerTest extends TestCase
         );
     }
 
+    /**
+     * @expectedExceptionMessage Package some_package:* was not found
+     * @expectedException \Exception
+     */
     public function testGetWithException()
     {
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Package some_package:* was not found');
-
         $this->repositoryMock->method('findPackage')
             ->with('some_package', '*')
             ->willReturn(null);

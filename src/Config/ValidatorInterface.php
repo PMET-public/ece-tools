@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config;
 
 use Magento\MagentoCloud\App\Logger;
@@ -14,9 +12,8 @@ use Magento\MagentoCloud\App\Logger;
  */
 interface ValidatorInterface
 {
-    public const LEVEL_NOTICE = Logger::NOTICE;
-    public const LEVEL_WARNING = Logger::WARNING;
-    public const LEVEL_CRITICAL = Logger::CRITICAL;
+    const LEVEL_WARNING = Logger::WARNING;
+    const LEVEL_CRITICAL = Logger::CRITICAL;
 
     /**
      * @return Validator\ResultInterface

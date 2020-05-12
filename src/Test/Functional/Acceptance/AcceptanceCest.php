@@ -7,9 +7,6 @@ declare(strict_types=1);
 
 namespace Magento\MagentoCloud\Test\Functional\Acceptance;
 
-use CliTester;
-use Robo\Exception\TaskException;
-use Codeception\Example;
 use Magento\MagentoCloud\Test\Functional\Codeception\Docker;
 use Magento\MagentoCloud\Util\ArrayManager;
 
@@ -21,29 +18,27 @@ use Magento\MagentoCloud\Util\ArrayManager;
  * 3. Test config dump
  * 4. Test content presence
  */
-class AcceptanceCest extends AbstractInstallCest
+class AcceptanceCest extends AbstractCest
 {
     /**
-     * @param CliTester $I
-     *
-     * @throws TaskException
+     * @param \CliTester $I
+     * @throws \Robo\Exception\TaskException
      */
-    public function _before(CliTester $I): void
+    public function _before(\CliTester $I)
     {
         parent::_before($I);
-
+        $I->cloneTemplate();
+        $I->addEceComposerRepo();
         $I->uploadToContainer('files/debug_logging/.magento.env.yaml', '/.magento.env.yaml', Docker::BUILD_CONTAINER);
     }
 
     /**
-     * @param CliTester $I
-     * @param Example $data
-     *
-     * @throws TaskException
-     *
+     * @param \CliTester $I
+     * @param \Codeception\Example $data
+     * @throws \Robo\Exception\TaskException
      * @dataProvider defaultDataProvider
      */
-    public function testDefault(\CliTester $I, \Codeception\Example $data): void
+    public function testDefault(\CliTester $I, \Codeception\Example $data)
     {
         $I->assertTrue($I->runEceToolsCommand('build', Docker::BUILD_CONTAINER));
         $I->startEnvironment();
@@ -95,7 +90,6 @@ class AcceptanceCest extends AbstractInstallCest
 
     /**
      * @return array
-     *
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
     protected function defaultDataProvider(): array
@@ -250,11 +244,10 @@ class AcceptanceCest extends AbstractInstallCest
     }
 
     /**
-     * @param CliTester $I
-     *
-     * @throws TaskException
+     * @param \CliTester $I
+     * @throws \Robo\Exception\TaskException
      */
-    public function testWithSplitBuildCommand(\CliTester $I): void
+    public function testWithSplitBuildCommand(\CliTester $I)
     {
         $I->assertTrue($I->runEceToolsCommand('build:generate', Docker::BUILD_CONTAINER));
         $I->assertTrue($I->runEceToolsCommand('build:transfer', Docker::BUILD_CONTAINER));
@@ -267,11 +260,10 @@ class AcceptanceCest extends AbstractInstallCest
     }
 
     /**
-     * @param CliTester $I
-     *
-     * @throws TaskException
+     * @param \CliTester $I
+     * @throws \Robo\Exception\TaskException
      */
-    public function testDeployInBuild(\CliTester $I): void
+    public function testDeployInBuild(\CliTester $I)
     {
         $tmpConfig = sys_get_temp_dir() . '/app/etc/config.php';
         $I->startEnvironment();
@@ -281,7 +273,7 @@ class AcceptanceCest extends AbstractInstallCest
         $I->assertTrue($I->runEceToolsCommand('config:dump', Docker::DEPLOY_CONTAINER));
         $I->assertNotContains(
             'Static content deployment was performed during the build phase or disabled. '
-            . 'Skipping deploy phase static content compression.',
+                . 'Skipping deploy phase static content compression.',
             $I->grabFileContent('/var/log/cloud.log')
         );
         $I->amOnPage('/');

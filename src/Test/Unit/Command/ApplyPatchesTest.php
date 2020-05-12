@@ -3,16 +3,14 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Command;
 
 use Magento\MagentoCloud\Command\ApplyPatches;
 use Magento\MagentoCloud\Patch\Manager;
+use Magento\MagentoCloud\Shell\ShellException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Tester\CommandTester;
 
 /**
  * Class ApplyPatchesTest.
@@ -29,9 +27,6 @@ class ApplyPatchesTest extends TestCase
      */
     private $managerMock;
 
-    /**
-     * @inheritDoc
-     */
     protected function setUp()
     {
         $this->managerMock = $this->createMock(Manager::class);
@@ -41,16 +36,32 @@ class ApplyPatchesTest extends TestCase
         );
     }
 
-    public function testExecute(): void
+    public function testExecute()
     {
         $this->managerMock->expects($this->once())
             ->method('apply');
 
-        /** @var InputInterface|MockObject $inputMock */
-        $inputMock = $this->getMockForAbstractClass(InputInterface::class);
-        /** @var OutputInterface|MockObject $outputMock */
-        $outputMock = $this->getMockForAbstractClass(OutputInterface::class);
+        $tester = new CommandTester(
+            $this->command
+        );
+        $tester->execute([]);
 
-        $this->command->execute($inputMock, $outputMock);
+        $this->assertSame(0, $tester->getStatusCode());
+    }
+
+    /**
+     * @expectedException \Magento\MagentoCloud\Shell\ShellException
+     * @expectedExceptionMessage Some error
+     */
+    public function testExecuteWithException()
+    {
+        $this->managerMock->expects($this->once())
+            ->method('apply')
+            ->willThrowException(new ShellException('Some error'));
+
+        $tester = new CommandTester(
+            $this->command
+        );
+        $tester->execute([]);
     }
 }

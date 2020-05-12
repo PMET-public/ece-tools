@@ -74,7 +74,7 @@ class Shell implements ShellInterface
             }
 
             $process = $this->processFactory->create([
-                'command' => $command,
+                'commandline' => $command,
                 'cwd' => $this->systemList->getMagentoRoot(),
                 'timeout' => null
             ]);

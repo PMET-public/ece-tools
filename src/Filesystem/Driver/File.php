@@ -5,8 +5,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Filesystem\Driver;
 
 use Magento\MagentoCloud\Filesystem\FileSystemException;
@@ -368,7 +366,7 @@ class File
      */
     public function touch($path, $time = null): bool
     {
-        return @touch($path, $time ?? time());
+        return @touch($path, $time);
     }
 
     /**
@@ -382,7 +380,7 @@ class File
      */
     public function filePutContents($path, $content, $mode = null)
     {
-        $result = @file_put_contents($path, $content, $mode ?? 0);
+        $result = @file_put_contents($path, $content, $mode);
         if (!$result) {
             $this->fileSystemException(
                 'The specified "%1" file could not be written %2',

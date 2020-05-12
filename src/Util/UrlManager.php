@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Util;
 
 use Magento\MagentoCloud\Config\Environment;
@@ -190,7 +188,7 @@ class UrlManager
     /**
      * Retrieves base urls for each store and save them into $storeBaseUrls
      */
-    private function loadStoreBaseUrls(): void
+    private function loadStoreBaseUrls()
     {
         if (!$this->storeBaseUrls) {
             try {
@@ -204,32 +202,6 @@ class UrlManager
             } catch (ShellException $e) {
                 $this->logger->error('Can\'t fetch store urls. ' . $e->getMessage());
             }
-        }
-    }
-
-    /**
-     * Gets store base url by store id or store code.
-     * Returns an empty string if store url failed to fetch.
-     *
-     * @param string $storeId store id or store code
-     * @return string|null
-     */
-    public function getStoreBaseUrl(string $storeId): ?string
-    {
-        try {
-            $this->loadStoreBaseUrls();
-
-            if (isset($this->storeBaseUrls[$storeId])) {
-                return $this->storeBaseUrls[$storeId];
-            }
-
-            $process = $this->magentoShell->execute('config:show:store-url', [$storeId]);
-
-            return $this->storeBaseUrls[$storeId] = $process->getOutput();
-        } catch (ShellException $e) {
-            $this->logger->error(sprintf('Can\'t fetch store with store code "%s". ', $storeId) . $e->getMessage());
-
-            return null;
         }
     }
 

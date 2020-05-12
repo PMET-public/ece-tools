@@ -3,15 +3,16 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Command;
 
 use Magento\MagentoCloud\Command\Deploy;
-use Magento\MagentoCloud\Filesystem\Flag\Manager;
-use Magento\MagentoCloud\Scenario\Processor;
+use Magento\MagentoCloud\Package\Manager as PackageManager;
+use Magento\MagentoCloud\Process\ProcessInterface;
+use Magento\MagentoCloud\Util\MaintenanceModeSwitcher;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
+use Magento\MagentoCloud\Filesystem\Flag\Manager as FlagManager;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
@@ -25,36 +26,64 @@ class DeployTest extends TestCase
     private $command;
 
     /**
-     * @var Processor|MockObject
+     * @var ProcessInterface|MockObject
      */
-    private $processorMock;
+    private $processMock;
 
     /**
-     * @var Manager|MockObject
+     * @var LoggerInterface|MockObject
+     */
+    private $loggerMock;
+
+    /**
+     * @var FlagManager|MockObject
      */
     private $flagManagerMock;
+
+    /**
+     * @var PackageManager|MockObject
+     */
+    private $packageManagerMock;
+
+    /**
+     * @var MaintenanceModeSwitcher|MockObject
+     */
+    private $maintenanceModeSwitcher;
 
     /**
      * @inheritdoc
      */
     protected function setUp()
     {
-        $this->processorMock = $this->createMock(Processor::class);
-        $this->flagManagerMock = $this->createMock(Manager::class);
+        $this->processMock = $this->getMockForAbstractClass(ProcessInterface::class);
+        $this->loggerMock = $this->getMockForAbstractClass(LoggerInterface::class);
+        $this->flagManagerMock = $this->createMock(FlagManager::class);
+        $this->packageManagerMock = $this->createMock(PackageManager::class);
+        $this->maintenanceModeSwitcher = $this->createMock(MaintenanceModeSwitcher::class);
 
         $this->command = new Deploy(
-            $this->processorMock,
-            $this->flagManagerMock
+            $this->processMock,
+            $this->loggerMock,
+            $this->flagManagerMock,
+            $this->packageManagerMock,
+            $this->maintenanceModeSwitcher
         );
     }
 
-    public function testExecute(): void
+    public function testExecute()
     {
-        $this->processorMock->expects($this->once())
-            ->method('execute')
-            ->with([
-                'scenario/deploy.xml'
-            ]);
+        $this->loggerMock->expects($this->exactly(2))
+            ->method('notice')
+            ->withConsecutive(['Starting deploy. Some info.'], ['Deployment completed.']);
+        $this->processMock->expects($this->once())
+            ->method('execute');
+        $this->flagManagerMock->expects($this->never())
+            ->method('set');
+        $this->packageManagerMock->expects($this->once())
+            ->method('getPrettyInfo')
+            ->willReturn('Some info.');
+        $this->maintenanceModeSwitcher->expects($this->never())
+            ->method('enable');
 
         $tester = new CommandTester(
             $this->command
@@ -62,5 +91,27 @@ class DeployTest extends TestCase
         $tester->execute([]);
 
         $this->assertSame(0, $tester->getStatusCode());
+    }
+
+    /**
+     * @expectedException \Exception
+     * @expectedExceptionMessage Some error
+     */
+    public function testExecuteWithException()
+    {
+        $this->loggerMock->expects($this->once())
+            ->method('critical')
+            ->with('Some error');
+        $this->processMock->expects($this->once())
+            ->method('execute')
+            ->willThrowException(new \Exception('Some error'));
+        $this->flagManagerMock->expects($this->once())
+            ->method('set')
+            ->with(FlagManager::FLAG_DEPLOY_HOOK_IS_FAILED);
+
+        $tester = new CommandTester(
+            $this->command
+        );
+        $tester->execute([]);
     }
 }

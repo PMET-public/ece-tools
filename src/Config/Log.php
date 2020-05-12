@@ -3,13 +3,11 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config;
 
 use Illuminate\Contracts\Config\Repository;
 use Magento\MagentoCloud\Filesystem\FileList;
-use Magento\MagentoCloud\Config\Environment\ReaderInterface;
+use Magento\MagentoCloud\Config\Environment\Reader;
 use Magento\MagentoCloud\App\Logger\HandlerFactory;
 
 /**
@@ -17,19 +15,19 @@ use Magento\MagentoCloud\App\Logger\HandlerFactory;
  */
 class Log
 {
-    public const SECTION_CONFIG = 'log';
+    const SECTION_CONFIG = 'log';
 
     /**
      * Log levels.
      */
-    public const LEVEL_DEBUG = 'debug';
-    public const LEVEL_INFO = 'info';
-    public const LEVEL_NOTICE = 'notice';
-    public const LEVEL_WARNING = 'warning';
-    public const LEVEL_ERROR = 'error';
-    public const LEVEL_CRITICAL = 'critical';
-    public const LEVEL_ALERT = 'alert';
-    public const LEVEL_EMERGENCY = 'emergency';
+    const LEVEL_DEBUG = 'debug';
+    const LEVEL_INFO = 'info';
+    const LEVEL_NOTICE = 'notice';
+    const LEVEL_WARNING = 'warning';
+    const LEVEL_ERROR = 'error';
+    const LEVEL_CRITICAL = 'critical';
+    const LEVEL_ALERT = 'alert';
+    const LEVEL_EMERGENCY = 'emergency';
 
     /**
      * @var FileList
@@ -37,7 +35,7 @@ class Log
     private $fileList;
 
     /**
-     * @var ReaderInterface
+     * @var Reader
      */
     private $reader;
 
@@ -53,10 +51,10 @@ class Log
 
     /**
      * @param FileList $fileList
-     * @param ReaderInterface $reader
+     * @param Reader $reader
      * @param RepositoryFactory $repositoryFactory
      */
-    public function __construct(FileList $fileList, ReaderInterface $reader, RepositoryFactory $repositoryFactory)
+    public function __construct(FileList $fileList, Reader $reader, RepositoryFactory $repositoryFactory)
     {
         $this->fileList = $fileList;
         $this->reader = $reader;

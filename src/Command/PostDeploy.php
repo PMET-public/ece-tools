@@ -3,36 +3,51 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Command;
 
-use Magento\MagentoCloud\Scenario\Exception\ProcessorException;
-use Magento\MagentoCloud\Scenario\Processor;
+use Magento\MagentoCloud\Process\ProcessInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Magento\MagentoCloud\Filesystem\Flag\Manager as FlagManager;
 
 /**
- * Performs post-deploy operations.
- *
- * @api
+ * Performs post-deploy operations, such us:
+ * - Cleaning cache
  */
 class PostDeploy extends Command
 {
     const NAME = 'post-deploy';
 
     /**
-     * @var Processor
+     * @var ProcessInterface
      */
-    private $processor;
+    private $process;
 
     /**
-     * @param Processor $processor
+     * @var LoggerInterface
      */
-    public function __construct(Processor $processor)
-    {
-        $this->processor = $processor;
+    private $logger;
+
+    /**
+     * @var FlagManager
+     */
+    private $flagManager;
+
+    /**
+     * @param ProcessInterface $process
+     * @param LoggerInterface $logger
+     * @param FlagManager $flagManager
+     */
+    public function __construct(
+        ProcessInterface $process,
+        LoggerInterface $logger,
+        FlagManager $flagManager
+    ) {
+        $this->process = $process;
+        $this->logger = $logger;
+        $this->flagManager = $flagManager;
 
         parent::__construct();
     }
@@ -51,12 +66,24 @@ class PostDeploy extends Command
     /**
      * {@inheritdoc}
      *
-     * @throws ProcessorException
+     * @throws \Throwable
      */
     public function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->processor->execute([
-            'scenario/post-deploy.xml'
-        ]);
+        try {
+            if ($this->flagManager->exists(FlagManager::FLAG_DEPLOY_HOOK_IS_FAILED)) {
+                $this->logger->warning('Post-deploy is skipped because deploy was failed.');
+
+                return 0;
+            }
+
+            $this->logger->notice('Starting post-deploy.');
+            $this->process->execute();
+            $this->logger->notice('Post-deploy is complete.');
+        } catch (\Throwable $e) {
+            $this->logger->critical($e->getMessage());
+
+            throw $e;
+        }
     }
 }

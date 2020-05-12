@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Command;
 
 use Magento\MagentoCloud\Patch\Manager;
@@ -20,7 +18,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ApplyPatches extends Command
 {
-    public const NAME = 'patch';
+    const NAME = 'patch';
 
     /**
      * @var Manager
@@ -40,7 +38,7 @@ class ApplyPatches extends Command
     /**
      * @inheritdoc
      */
-    protected function configure(): void
+    protected function configure()
     {
         $this->setName(self::NAME)
             ->setDescription('Applies custom patches');

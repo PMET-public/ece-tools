@@ -3,9 +3,10 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config;
+
+use Magento\MagentoCloud\PlatformVariable\DecoderInterface;
+use Magento\MagentoCloud\Config\System\Variables;
 
 /**
  * Contains logic for interacting with the server environment
@@ -13,35 +14,47 @@ namespace Magento\MagentoCloud\Config;
 class Environment
 {
     /**
+     * @var Variables
+     */
+    private $systemConfig;
+
+    /**
      * Regex pattern for detecting main branch.
      * The name of the main branch must be started from one of three prefixes:
      *   master - is for integration environment;
      *   production and staging are for production and staging environments respectively.
      */
-    private const GIT_MASTER_BRANCH_RE = '/^(master|production|staging)(?:-[a-z0-9]+)?$/i';
+    const GIT_MASTER_BRANCH_RE = '/^(master|production|staging)(?:-[a-z0-9]+)?$/i';
 
-    public const VAL_ENABLED = 'enabled';
-    public const VAL_DISABLED = 'disabled';
+    const VAL_ENABLED = 'enabled';
+    const VAL_DISABLED = 'disabled';
+
+    const DEFAULT_ADMIN_URL = 'admin';
+    const DEFAULT_ADMIN_NAME = 'admin';
+    const DEFAULT_ADMIN_FIRSTNAME = 'Admin';
+    const DEFAULT_ADMIN_LASTNAME = 'Username';
 
     /**
-     * The environment variable for controlling the directory nesting level for error reporting
+     * @var DecoderInterface
      */
-    public const ENV_MAGE_ERROR_REPORT_DIR_NESTING_LEVEL = 'MAGE_ERROR_REPORT_DIR_NESTING_LEVEL';
-
-    /**
-     * @var EnvironmentDataInterface
-     */
-    private $environmentData;
+    private $decoder;
 
     /**
      * Environment constructor.
      *
-     * @param EnvironmentDataInterface $environmentData
+     * @param Variables $systemConfig
+     * @param DecoderInterface $decoder
      */
-    public function __construct(EnvironmentDataInterface $environmentData)
+    public function __construct(Variables $systemConfig, DecoderInterface $decoder)
     {
-        $this->environmentData = $environmentData;
+        $this->systemConfig = $systemConfig;
+        $this->decoder = $decoder;
     }
+
+    /**
+     * @var array
+     */
+    private $data = [];
 
     /**
      * 'getEnv' method is an abstraction for _ENV and getenv.
@@ -53,41 +66,81 @@ class Environment
      */
     public function getEnv(string $key)
     {
-        return $this->environmentData->getEnv($key);
+        return $_ENV[$key] ?? getenv($key);
     }
 
     /**
-     * Get a value of the environment variable MAGE_ERROR_REPORT_DIR_NESTING_LEVEL.
+     * 'get' method is used for getting environment variables, and then base64 decodes them,
+     * and then converts them from json objects to PHP arrays.
+     * returns $default argument if not found.
      *
-     * @return array|string|int|null|bool
+     * @param string $key
+     * @param string|int|null $default
+     * @return array|string|int|null
      */
-    public function getEnvVarMageErrorReportDirNestingLevel()
+    public function get(string $key, $default = null)
     {
-        return $this->getEnv(self::ENV_MAGE_ERROR_REPORT_DIR_NESTING_LEVEL);
+        $value = $this->getEnv($key);
+        if (false === $value) {
+            return $default;
+        }
+
+        return $this->decoder->decode($value);
     }
 
     /**
-     * Get routes information.
+     * Get environment variable and get the name from .magento.env.yaml configuration file.
+     *
+     * @param string $name
+     * @param mixed $default
+     * @return array|string|int|null
+     */
+    public function getEnvVar(string $name, $default = null)
+    {
+        return $this->get($this->getEnvVarName($name), $default);
+    }
+
+    /**
+     * Get Environment Variable name from .magento.env.yaml.
+     *
+     * @param string $name
+     * @return string
+     */
+    public function getEnvVarName(string $name): string
+    {
+        return $this->systemConfig->get($name);
+    }
+
+    /**
+     * Get routes information from MagentoCloud environment variable.
      *
      * @return array
      */
     public function getRoutes(): array
     {
-        return $this->environmentData->getRoutes();
+        if (isset($this->data['routes'])) {
+            return $this->data['routes'];
+        }
+
+        return $this->data['routes'] = $this->getEnvVar(SystemConfigInterface::VAR_ENV_ROUTES, []);
     }
 
     /**
-     * Get relationships information.
+     * Get relationships information from MagentoCloud environment variable.
      *
      * @return array
      */
     public function getRelationships(): array
     {
-        return $this->environmentData->getRelationships();
+        if (isset($this->data['relationships'])) {
+            return $this->data['relationships'];
+        }
+
+        return $this->data['relationships'] = $this->getEnvVar(SystemConfigInterface::VAR_ENV_RELATIONSHIPS, []);
     }
 
     /**
-     * Get relationship information by key.
+     * Get relationship information from MagentoCloud environment variable by key.
      *
      * @param string $key
      * @return array
@@ -100,13 +153,17 @@ class Environment
     }
 
     /**
-     * Get custom variables.
+     * Get custom variables from MagentoCloud environment variable.
      *
      * @return array
      */
     public function getVariables(): array
     {
-        return $this->environmentData->getVariables();
+        if (isset($this->data['variables'])) {
+            return $this->data['variables'];
+        }
+
+        return $this->data['variables'] = $this->getEnvVar(SystemConfigInterface::VAR_ENV_VARIABLES, []);
     }
 
     /**
@@ -114,7 +171,11 @@ class Environment
      */
     public function getApplication(): array
     {
-        return $this->environmentData->getApplication();
+        if (isset($this->data['application'])) {
+            return $this->data['application'];
+        }
+
+        return $this->data['application'] = $this->getEnvVar(SystemConfigInterface::VAR_ENV_APPLICATION, []);
     }
 
     /**
@@ -127,6 +188,70 @@ class Environment
     public function getVariable($name, $default = null)
     {
         return $this->getVariables()[$name] ?? $default;
+    }
+
+    /**
+     * @return string
+     */
+    public function getAdminLocale(): string
+    {
+        return $this->getVariables()['ADMIN_LOCALE'] ?? 'en_US';
+    }
+
+    /**
+     * @return string
+     */
+    public function getAdminUsername(): string
+    {
+        return $this->getVariables()['ADMIN_USERNAME'] ?? '';
+    }
+
+    /**
+     * @return string
+     */
+    public function getAdminFirstname(): string
+    {
+        return $this->getVariables()['ADMIN_FIRSTNAME'] ?? '';
+    }
+
+    /**
+     * @return string
+     */
+    public function getAdminLastname(): string
+    {
+        return $this->getVariables()['ADMIN_LASTNAME'] ?? '';
+    }
+
+    /**
+     * @return string
+     */
+    public function getAdminEmail(): string
+    {
+        return $this->getVariables()['ADMIN_EMAIL'] ?? '';
+    }
+
+    /**
+     * @return string
+     */
+    public function getAdminPassword(): string
+    {
+        return $this->getVariables()['ADMIN_PASSWORD'] ?? '';
+    }
+
+    /**
+     * @return string
+     */
+    public function getAdminUrl(): string
+    {
+        return $this->getVariables()['ADMIN_URL'] ?? '';
+    }
+
+    /**
+     * @return string
+     */
+    public function getDefaultCurrency(): string
+    {
+        return 'USD';
     }
 
     /**
@@ -145,9 +270,8 @@ class Environment
      */
     public function isMasterBranch(): bool
     {
-        $branchName = $this->environmentData->getBranchName();
-
-        return !empty($branchName)
-            && preg_match(self::GIT_MASTER_BRANCH_RE, $branchName);
+        $envVar = $this->systemConfig->get(SystemConfigInterface::VAR_ENV_ENVIRONMENT);
+        return isset($_ENV[$envVar])
+            && preg_match(self::GIT_MASTER_BRANCH_RE, $_ENV[$envVar]);
     }
 }

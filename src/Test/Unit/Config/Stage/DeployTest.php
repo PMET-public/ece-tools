@@ -3,11 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Config\Stage;
 
-use Magento\MagentoCloud\Config\ConfigException;
 use Magento\MagentoCloud\Config\Schema;
 use Magento\MagentoCloud\Config\Stage\Deploy;
 use Magento\MagentoCloud\Config\Stage\DeployInterface;
@@ -55,10 +52,8 @@ class DeployTest extends TestCase
      * @param array $mergedConfig
      * @param array|null $schema
      * @dataProvider getDataProvider
-     *
-     * @throws ConfigException
      */
-    public function testGet(string $name, $expectedValue, array $mergedConfig, array $schema = null): void
+    public function testGet(string $name, $expectedValue, array $mergedConfig, array $schema = null)
     {
         $this->mergedConfigMock->expects($this->once())
             ->method('get')
@@ -78,6 +73,7 @@ class DeployTest extends TestCase
 
     /**
      * @return array
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
     public function getDataProvider(): array
     {
@@ -165,13 +161,11 @@ class DeployTest extends TestCase
     }
 
     /**
-     * @throws ConfigException
+     * @expectedExceptionMessage Config NO_EXISTS_CONFIG was not defined
+     * @expectedException \RuntimeException
      */
-    public function testGetConfigNotDefined(): void
+    public function testGetConfigNotDefined()
     {
-        $this->expectException(ConfigException::class);
-        $this->expectExceptionMessage('Config NO_EXISTS_CONFIG was not defined');
-
         $this->mergedConfigMock->expects($this->once())
             ->method('get')
             ->willReturn([]);
@@ -180,16 +174,14 @@ class DeployTest extends TestCase
     }
 
     /**
-     * @throws ConfigException
+     * @expectedExceptionMessage Some error
+     * @expectedException \RuntimeException
      */
-    public function testGetWithMergedConfigException(): void
+    public function testGetWithMergedConfigException()
     {
-        $this->expectException(ConfigException::class);
-        $this->expectExceptionMessage('Some error');
-
         $this->mergedConfigMock->expects($this->once())
             ->method('get')
-            ->willThrowException(new ConfigException('Some error'));
+            ->willThrowException(new \RuntimeException('Some error'));
 
         $this->deployConfig->get(Deploy::VAR_SCD_STRATEGY);
     }

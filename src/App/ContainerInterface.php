@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\App;
 
 /**
@@ -24,9 +22,10 @@ interface ContainerInterface extends \Psr\Container\ContainerInterface
     /**
      * Register a binding with the container.
      *
-     * @param string $id
-     * @param object $service
+     * @param string $abstract
+     * @param string|\Closure $concrete
+     * @param bool $shared
      * @return void
      */
-    public function set(string $id, $service): void;
+    public function set(string $abstract, $concrete, bool $shared = true);
 }

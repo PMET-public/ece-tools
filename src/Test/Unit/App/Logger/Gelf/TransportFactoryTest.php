@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\App\Logger\Gelf;
 
 use Gelf\Transport\HttpTransport;
@@ -69,11 +67,12 @@ class TransportFactoryTest extends TestCase
         ];
     }
 
+    /**
+     * @expectedException \Exception
+     * @expectedExceptionMessage Unknown transport type:
+     */
     public function testCreateUnknownType()
     {
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Unknown transport type:');
-
         $this->transportFactory->create('unknown_type', []);
     }
 }

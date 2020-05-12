@@ -3,13 +3,12 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\StaticContent\Build;
 
-use Magento\MagentoCloud\Config\AdminDataInterface;
-use Magento\MagentoCloud\Config\Magento\Shared\Resolver;
+use Magento\MagentoCloud\Config\Environment;
 use Magento\MagentoCloud\Config\Stage\BuildInterface;
+use Magento\MagentoCloud\Filesystem\Driver\File;
+use Magento\MagentoCloud\Filesystem\Resolver\SharedConfig;
 use Magento\MagentoCloud\Package\MagentoVersion;
 use Magento\MagentoCloud\StaticContent\Build\Option;
 use Magento\MagentoCloud\StaticContent\ThreadCountOptimizer;
@@ -33,9 +32,9 @@ class OptionTest extends TestCase
     private $magentoVersionMock;
 
     /**
-     * @var AdminDataInterface|MockObject
+     * @var Environment|MockObject
      */
-    private $adminDataMock;
+    private $environmentMock;
 
     /**
      * @var ArrayManager|MockObject
@@ -53,33 +52,40 @@ class OptionTest extends TestCase
     private $stageConfigMock;
 
     /**
-     * @var Resolver|MockObject
+     * @var SharedConfig|MockObject
      */
     private $configResolverMock;
 
     /**
+     * @var File|MockObject
+     */
+    private $fileMock;
+
+    /**
      * @inheritdoc
      */
-    protected function setUp(): void
+    protected function setUp()
     {
         $this->magentoVersionMock = $this->createMock(MagentoVersion::class);
-        $this->adminDataMock = $this->getMockForAbstractClass(AdminDataInterface::class);
+        $this->environmentMock = $this->createMock(Environment::class);
         $this->arrayManagerMock = $this->createMock(ArrayManager::class);
         $this->threadCountOptimizerMock = $this->createMock(ThreadCountOptimizer::class);
         $this->stageConfigMock = $this->getMockForAbstractClass(BuildInterface::class);
-        $this->configResolverMock = $this->createMock(Resolver::class);
+        $this->configResolverMock = $this->createMock(SharedConfig::class);
+        $this->fileMock = $this->createMock(File::class);
 
         $this->option = new Option(
-            $this->adminDataMock,
+            $this->environmentMock,
             $this->arrayManagerMock,
             $this->magentoVersionMock,
             $this->threadCountOptimizerMock,
             $this->stageConfigMock,
-            $this->configResolverMock
+            $this->configResolverMock,
+            $this->fileMock
         );
     }
 
-    public function testGetThreadCount(): void
+    public function testGetThreadCount()
     {
         $this->stageConfigMock->expects($this->exactly(2))
             ->method('get')
@@ -96,9 +102,48 @@ class OptionTest extends TestCase
     }
 
     /**
+     * @param $themes
+     * @param $expected
+     * @dataProvider excludedThemesDataProvider
+     */
+    public function testGetExcludedThemes($themes, $expected)
+    {
+        $this->stageConfigMock->expects($this->once())
+            ->method('get')
+            ->with(BuildInterface::VAR_SCD_EXCLUDE_THEMES)
+            ->willReturn($themes);
+
+        $this->assertEquals(
+            $expected,
+            $this->option->getExcludedThemes()
+        );
+    }
+
+    /**
+     * @return array
+     */
+    public function excludedThemesDataProvider(): array
+    {
+        return [
+            [
+                '',
+                [],
+            ],
+            [
+                'theme1, theme2 ,,  theme3 ',
+                ['theme1', 'theme2', 'theme3'],
+            ],
+            [
+                'theme3,,theme4,,,,theme5',
+                ['theme3', 'theme4', 'theme5'],
+            ],
+        ];
+    }
+
+    /**
      * Test getting the SCD strategy from the strategy checker.
      */
-    public function testGetStrategy(): void
+    public function testGetStrategy()
     {
         $this->stageConfigMock->expects($this->once())
             ->method('get')
@@ -113,7 +158,7 @@ class OptionTest extends TestCase
         $this->assertEquals('strategy', $this->option->getStrategy());
     }
 
-    public function testIsForce(): void
+    public function testIsForce()
     {
         $this->magentoVersionMock->expects($this->once())
             ->method('isGreaterOrEqual')
@@ -123,11 +168,11 @@ class OptionTest extends TestCase
         $this->assertTrue($this->option->isForce());
     }
 
-    public function testGetLocales(): void
+    public function testGetLocales()
     {
         $this->configResolverMock->expects($this->once())
-            ->method('read')
-            ->willReturn(['some' => 'config']);
+            ->method('resolve')
+            ->willReturn(__DIR__ . '/_files/app/etc/config.php');
         $flattenConfig = [
             'scopes' => [
                 'websites' => [],
@@ -148,8 +193,8 @@ class OptionTest extends TestCase
                 [$flattenConfig, 'general/locale/code', true, ['fr_FR']],
                 [$flattenConfig, 'admin_user/locale/code', false, ['es_ES']],
             ]);
-        $this->adminDataMock->expects($this->once())
-            ->method('getLocale')
+        $this->environmentMock->expects($this->once())
+            ->method('getAdminLocale')
             ->willReturn('ua_UA');
 
         $this->assertEquals(
@@ -163,17 +208,23 @@ class OptionTest extends TestCase
         );
     }
 
-    public function testGetLocales21(): void
+    public function testGetLocales21()
     {
         $this->configResolverMock->expects($this->once())
-            ->method('read')
-            ->willReturn(['some' => 'config']);
+            ->method('resolve')
+            ->willReturn(__DIR__ . '/_files/app/etc/config.php');
         $flattenConfig = [
             'scopes' => [
                 'websites' => [],
                 'stores' => [],
             ],
         ];
+        $this->fileMock->expects($this->once())
+            ->method('isExists')
+            ->willReturn(true);
+        $this->fileMock->expects($this->once())
+            ->method('requireFile')
+            ->willReturn(['some' => 'config']);
         $this->arrayManagerMock->expects($this->once())
             ->method('flatten')
             ->with(['some' => 'config'])
@@ -189,8 +240,8 @@ class OptionTest extends TestCase
                 [$flattenConfig, 'general/locale/code', true, ['fr_FR']],
                 [$flattenConfig, 'admin_user/locale/code', false, ['es_ES']],
             ]);
-        $this->adminDataMock->expects($this->once())
-            ->method('getLocale')
+        $this->environmentMock->expects($this->once())
+            ->method('getAdminLocale')
             ->willReturn('ua_UA');
 
         $this->assertEquals(
@@ -204,7 +255,7 @@ class OptionTest extends TestCase
         );
     }
 
-    public function testGetVerbosityLevel(): void
+    public function testGetVerbosityLevel()
     {
         $this->stageConfigMock->expects($this->once())
             ->method('get')

@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Shell;
 
 use Magento\MagentoCloud\App\Logger\Sanitizer;
@@ -13,7 +11,6 @@ use Magento\MagentoCloud\Shell\ProcessException;
 use Magento\MagentoCloud\Shell\ProcessFactory;
 use Magento\MagentoCloud\Shell\ProcessInterface;
 use Magento\MagentoCloud\Shell\Shell;
-use Magento\MagentoCloud\Shell\ShellException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -90,7 +87,7 @@ class ShellTest extends TestCase
         $this->processFactoryMock->expects($this->once())
             ->method('create')
             ->with([
-                'command' => $commandWithArgs,
+                'commandline' => $commandWithArgs,
                 'cwd' => $magentoRoot,
                 'timeout' => null
             ])
@@ -140,7 +137,7 @@ class ShellTest extends TestCase
         $this->processFactoryMock->expects($this->once())
             ->method('create')
             ->with([
-                'command' => $command,
+                'commandline' => $command,
                 'cwd' => $magentoRoot,
                 'timeout' => 0
             ])
@@ -155,12 +152,13 @@ class ShellTest extends TestCase
         $this->shell->execute($command);
     }
 
+    /**
+     * @expectedException \Magento\MagentoCloud\Shell\ShellException
+     * @expectedExceptionMessage Command ls -al --password="***" failed
+     * @expectedExceptionCode 3
+     */
     public function testExecuteException()
     {
-        $this->expectException(ShellException::class);
-        $this->expectExceptionMessage('Command ls -al --password="***" failed');
-        $this->expectExceptionCode(3);
-
         $command = 'ls -al --password="123"';
         $magentoRoot = '/magento';
 
@@ -177,7 +175,7 @@ class ShellTest extends TestCase
         $this->processFactoryMock->expects($this->once())
             ->method('create')
             ->with([
-                'command' => $command,
+                'commandline' => $command,
                 'cwd' => $magentoRoot,
                 'timeout' => 0
             ])
@@ -209,7 +207,7 @@ class ShellTest extends TestCase
         $this->processFactoryMock->expects($this->once())
             ->method('create')
             ->with([
-                'command' => "ls -al 'arg1' 'arg2'",
+                'commandline' => "ls -al 'arg1' 'arg2'",
                 'cwd' => $magentoRoot,
                 'timeout' => 0
             ])

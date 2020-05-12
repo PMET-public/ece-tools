@@ -1,9 +1,7 @@
+.idea
+vendor
+composer.phar
+composer.lock
 .DS_Store
-/.idea
-/vendor
-/composer.phar
-/composer.lock
 /sandbox
-/docker-compose.yml
-/auth.json
-/codeception.yml
+docker-compose.yml

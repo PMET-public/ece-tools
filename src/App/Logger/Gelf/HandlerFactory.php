@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\App\Logger\Gelf;
 
 use Illuminate\Contracts\Config\Repository;
@@ -66,6 +64,6 @@ class HandlerFactory
      */
     private function increaseSocketTimeout()
     {
-        ini_set('default_socket_timeout', '3600');
+        ini_set('default_socket_timeout', 3600);
     }
 }

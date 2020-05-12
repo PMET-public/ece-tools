@@ -3,12 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config;
 
-use Magento\MagentoCloud\Config\Magento\Shared\ReaderInterface;
-use Magento\MagentoCloud\Config\Magento\Shared\WriterInterface;
 use Magento\MagentoCloud\Filesystem\FileSystemException;
 use Magento\MagentoCloud\Shell\MagentoShell;
 use Magento\MagentoCloud\Shell\ShellException;
@@ -20,29 +16,22 @@ use Magento\MagentoCloud\Shell\ShellFactory;
 class Module
 {
     /**
+     * @var ConfigInterface
+     */
+    private $config;
+
+    /**
      * @var MagentoShell
      */
     private $magentoShell;
 
     /**
-     * @var ReaderInterface
-     */
-    private $reader;
-
-    /**
-     * @var WriterInterface
-     */
-    private $writer;
-
-    /**
-     * @param ReaderInterface $reader
-     * @param WriterInterface $writer
+     * @param ConfigInterface $config
      * @param ShellFactory $shellFactory
      */
-    public function __construct(ReaderInterface $reader, WriterInterface $writer, ShellFactory $shellFactory)
+    public function __construct(ConfigInterface $config, ShellFactory $shellFactory)
     {
-        $this->reader = $reader;
-        $this->writer = $writer;
+        $this->config = $config;
         $this->magentoShell = $shellFactory->createMagento();
     }
 
@@ -55,17 +44,16 @@ class Module
      */
     public function refresh(): array
     {
-        // Update initial config file to avoid broken file error.
-        $this->writer->update(['modules' => []]);
-
-        $moduleConfig = $this->reader->read()['modules'] ?? [];
+        $moduleConfig = (array)$this->config->get('modules');
 
         $this->magentoShell->execute('module:enable --all');
 
-        $updatedModuleConfig = $this->reader->read()['modules'] ?? [];
+        $this->config->reset();
+
+        $updatedModuleConfig = (array)$this->config->get('modules');
 
         if ($moduleConfig) {
-            $this->writer->update(['modules' => $moduleConfig]);
+            $this->config->update(['modules' => $moduleConfig]);
         }
 
         return array_keys(array_diff_key($updatedModuleConfig, $moduleConfig));

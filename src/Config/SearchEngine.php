@@ -82,6 +82,8 @@ class SearchEngine
      * Returns search engine configuration. At least contains 'engine' option.
      *
      * @return array
+     *
+     * @throws UndefinedPackageException
      */
     public function getConfig(): array
     {
@@ -93,7 +95,7 @@ class SearchEngine
                     return $this->configMerger->clear($searchConfig);
                 }
 
-                return $this->configMerger->merge(
+                return $this->configMerger->mergeConfigs(
                     $this->getSearchConfig(),
                     $searchConfig
                 );
@@ -113,6 +115,8 @@ class SearchEngine
 
     /**
      * @return string
+     *
+     * @throws UndefinedPackageException
      */
     public function getName(): string
     {

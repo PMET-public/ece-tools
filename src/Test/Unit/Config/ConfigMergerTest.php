@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Config;
 
 use Magento\MagentoCloud\Config\ConfigMerger;
@@ -34,7 +32,7 @@ class ConfigMergerTest extends TestCase
      * @param bool $expected
      * @dataProvider isEmptyDataProvider
      */
-    public function testIsEmpty(array $config, bool $expected): void
+    public function testIsEmpty(array $config, bool $expected)
     {
         $this->assertEquals($expected, $this->configMerger->isEmpty($config));
     }
@@ -67,7 +65,7 @@ class ConfigMergerTest extends TestCase
         ];
     }
 
-    public function testClear(): void
+    public function testClear()
     {
         $this->assertSame(
             ['key' => 'value'],
@@ -83,7 +81,7 @@ class ConfigMergerTest extends TestCase
      * @param bool $expected
      * @dataProvider isMergeRequiredDataProvider
      */
-    public function testIsMergeRequired(array $config, bool $expected): void
+    public function testIsMergeRequired(array $config, bool $expected)
     {
         $this->assertEquals($expected, $this->configMerger->isMergeRequired($config));
     }
@@ -127,20 +125,20 @@ class ConfigMergerTest extends TestCase
      * @param array $baseConfig
      * @param array $configToMerge
      * @param array $expected
-     * @dataProvider mergeDataProvider
+     * @dataProvider mergeConfigsDataProvider
      */
-    public function testMerge(array $baseConfig, array $configToMerge, array $expected): void
+    public function testMergeConfigs(array $baseConfig, array $configToMerge, array $expected)
     {
         $this->assertEquals(
             $expected,
-            $this->configMerger->merge($baseConfig, $configToMerge)
+            $this->configMerger->mergeConfigs($baseConfig, $configToMerge)
         );
     }
 
     /**
      * @return array
      */
-    public function mergeDataProvider(): array
+    public function mergeConfigsDataProvider(): array
     {
         return [
             [

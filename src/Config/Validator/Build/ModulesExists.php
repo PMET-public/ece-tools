@@ -3,11 +3,9 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config\Validator\Build;
 
-use Magento\MagentoCloud\Config\Magento\Shared\ReaderInterface;
+use Magento\MagentoCloud\Config\ConfigInterface;
 use Magento\MagentoCloud\Config\Validator;
 use Magento\MagentoCloud\Config\ValidatorInterface;
 
@@ -17,9 +15,9 @@ use Magento\MagentoCloud\Config\ValidatorInterface;
 class ModulesExists implements ValidatorInterface
 {
     /**
-     * @var ReaderInterface
+     * @var ConfigInterface
      */
-    private $reader;
+    private $config;
 
     /**
      * @var Validator\ResultFactory
@@ -27,12 +25,12 @@ class ModulesExists implements ValidatorInterface
     private $resultFactory;
 
     /**
-     * @param ReaderInterface $reader
+     * @param ConfigInterface $config
      * @param Validator\ResultFactory $resultFactory
      */
-    public function __construct(ReaderInterface $reader, Validator\ResultFactory $resultFactory)
+    public function __construct(ConfigInterface $config, Validator\ResultFactory $resultFactory)
     {
-        $this->reader = $reader;
+        $this->config = $config;
         $this->resultFactory = $resultFactory;
     }
 
@@ -41,7 +39,7 @@ class ModulesExists implements ValidatorInterface
      */
     public function validate(): Validator\ResultInterface
     {
-        return isset($this->reader->read()['modules'])
+        return $this->config->has('modules')
             ? $this->resultFactory->success()
             : $this->resultFactory->error('The modules section is missing from the shared config file.');
     }

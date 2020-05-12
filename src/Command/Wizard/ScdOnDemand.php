@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Command\Wizard;
 
 use Magento\MagentoCloud\Config\GlobalSection;
@@ -15,8 +13,6 @@ use Magento\MagentoCloud\Command\Wizard\Util\OutputFormatter;
 
 /**
  * Verifies configuration to be properly set and ready to use SCD on demand.
- *
- * @api
  */
 class ScdOnDemand extends Command
 {

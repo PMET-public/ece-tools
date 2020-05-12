@@ -3,13 +3,12 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\StaticContent\Build;
 
-use Magento\MagentoCloud\Config\AdminDataInterface;
+use Magento\MagentoCloud\Config\Environment;
 use Magento\MagentoCloud\Config\Stage\BuildInterface;
-use Magento\MagentoCloud\Config\Magento\Shared\Resolver;
+use Magento\MagentoCloud\Filesystem\Driver\File;
+use Magento\MagentoCloud\Filesystem\Resolver\SharedConfig;
 use Magento\MagentoCloud\Package\MagentoVersion;
 use Magento\MagentoCloud\StaticContent\OptionInterface;
 use Magento\MagentoCloud\StaticContent\ThreadCountOptimizer;
@@ -21,9 +20,9 @@ use Magento\MagentoCloud\Util\ArrayManager;
 class Option implements OptionInterface
 {
     /**
-     * @var AdminDataInterface
+     * @var Environment
      */
-    private $adminData;
+    private $environment;
 
     /**
      * @var MagentoVersion
@@ -46,32 +45,40 @@ class Option implements OptionInterface
     private $stageConfig;
 
     /**
-     * @var Resolver
+     * @var SharedConfig
      */
-    private $resolver;
+    private $configResolver;
 
     /**
-     * @param AdminDataInterface $adminData
+     * @var File
+     */
+    private $file;
+
+    /**
+     * @param Environment $environment
      * @param ArrayManager $arrayManager
      * @param MagentoVersion $magentoVersion
      * @param ThreadCountOptimizer $threadCountOptimizer
      * @param BuildInterface $stageConfig
-     * @param Resolver $resolver
+     * @param SharedConfig $configResolver
+     * @param File $file
      */
     public function __construct(
-        AdminDataInterface $adminData,
+        Environment $environment,
         ArrayManager $arrayManager,
         MagentoVersion $magentoVersion,
         ThreadCountOptimizer $threadCountOptimizer,
         BuildInterface $stageConfig,
-        Resolver $resolver
+        SharedConfig $configResolver,
+        File $file
     ) {
-        $this->adminData = $adminData;
+        $this->environment = $environment;
         $this->magentoVersion = $magentoVersion;
         $this->arrayManager = $arrayManager;
         $this->threadCountOptimizer = $threadCountOptimizer;
         $this->stageConfig = $stageConfig;
-        $this->resolver = $resolver;
+        $this->configResolver = $configResolver;
+        $this->file = $file;
     }
 
     /**
@@ -83,6 +90,16 @@ class Option implements OptionInterface
             (int)$this->stageConfig->get(BuildInterface::VAR_SCD_THREADS),
             $this->getStrategy()
         );
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getExcludedThemes(): array
+    {
+        $themes = preg_split('/[,]+/', $this->stageConfig->get(BuildInterface::VAR_SCD_EXCLUDE_THEMES));
+
+        return array_filter(array_map('trim', $themes));
     }
 
     /**
@@ -106,10 +123,11 @@ class Option implements OptionInterface
      */
     public function getLocales(): array
     {
-        $config = $this->resolver->read();
-        $flattenedConfig = $this->arrayManager->flatten($config);
+        $configPath = $this->configResolver->resolve();
+        $configuration = $this->file->isExists($configPath) ? $this->file->requireFile($configPath) : [];
+        $flattenedConfig = $this->arrayManager->flatten($configuration);
 
-        $locales = [$this->adminData->getLocale()];
+        $locales = [$this->environment->getAdminLocale()];
         $locales = array_merge($locales, $this->arrayManager->filter($flattenedConfig, 'general/locale/code'));
         $locales = array_merge(
             $locales,

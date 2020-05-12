@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\App;
 
 use Magento\MagentoCloud\App\ErrorHandler;
@@ -42,18 +40,21 @@ class ErrorHandlerTest extends TestCase
         );
     }
 
+    /**
+     * @expectedException \Exception
+     * @expectedExceptionMessage Error: Some string in some_file.php on line 1
+     */
     public function testHandleWithException()
     {
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Error: Some string in some_file.php on line 1');
-
         $this->handler->handle(1, 'Some string', 'some_file.php', 1);
     }
 
+    /**
+     * @expectedException \Exception
+     * @expectedExceptionMessage Unknown error (3): Some string in some_file.php on line 1
+     */
     public function testHandleWithUnknownException()
     {
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Unknown error (3): Some string in some_file.php on line 1');
         $this->handler->handle(3, 'Some string', 'some_file.php', 1);
     }
 }

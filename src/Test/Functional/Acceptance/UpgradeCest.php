@@ -11,8 +11,6 @@ use Magento\MagentoCloud\Test\Functional\Codeception\Docker;
 
 /**
  * This test runs on the latest version of PHP
- *
- * @group php72
  */
 class UpgradeCest extends AbstractCest
 {

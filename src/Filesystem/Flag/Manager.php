@@ -3,12 +3,11 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Filesystem\Flag;
 
 use Magento\MagentoCloud\Filesystem\DirectoryList;
 use Magento\MagentoCloud\Filesystem\Driver\File;
+use Magento\MagentoCloud\Filesystem\FileSystemException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -20,17 +19,17 @@ class Manager
      * This flag is creating by magento for cleaning up generated/code, generated/metadata and var/cache directories
      * for subsequent regeneration of this content.
      */
-    public const FLAG_REGENERATE = 'regenerate';
+    const FLAG_REGENERATE = 'regenerate';
 
     /**
      * Used to mark that static content deployment was performed on build phase.
      */
-    public const FLAG_STATIC_CONTENT_DEPLOY_IN_BUILD = 'scd_in_build';
+    const FLAG_STATIC_CONTENT_DEPLOY_IN_BUILD = 'scd_in_build';
 
     /**
      * Used to mark that deploy hook is failed.
      */
-    public const FLAG_DEPLOY_HOOK_IS_FAILED = 'deploy_is_failed';
+    const FLAG_DEPLOY_HOOK_IS_FAILED = 'deploy_is_failed';
 
     /**
      * @var LoggerInterface
@@ -50,61 +49,66 @@ class Manager
     /**
      * @var Pool
      */
-    private $pool;
+    private $flagPool;
 
     /**
      * @param LoggerInterface $logger
      * @param File $file
-     * @param Pool $pool
+     * @param Pool $flagPool
      * @param DirectoryList $directoryList
      */
     public function __construct(
         LoggerInterface $logger,
         File $file,
-        Pool $pool,
+        Pool $flagPool,
         DirectoryList $directoryList
     ) {
         $this->logger = $logger;
         $this->file = $file;
-        $this->pool = $pool;
+        $this->flagPool = $flagPool;
         $this->directoryList = $directoryList;
     }
 
     /**
      * Determines whether or not a flag exists.
      *
-     * @param string $key
+     * @param string $flagKey
      * @return bool
-     * @throws ConfigurationMismatchException If flag with given key is not registered
+     * @throws \RuntimeException If flag with given key is not registered
      */
-    public function exists(string $key): bool
+    public function exists(string $flagKey): bool
     {
-        $path = $this->directoryList->getMagentoRoot() . '/' . $this->getFlagPath($key);
+        $path = $this->directoryList->getMagentoRoot() . '/' . $this->getFlagPath($flagKey);
 
-        return $this->file->isExists($path);
+        try {
+            return $this->file->isExists($path);
+        } catch (FileSystemException $e) {
+            $this->logger->notice($e->getMessage());
+        }
+
+        return false;
     }
 
     /**
      * Sets a flag on the file system.
      *
-     * @param string $key
+     * @param string $flagKey
      * @return bool Returns false if file for required flag was not created, otherwise returns true
-     * @throws ConfigurationMismatchException
      */
-    public function set(string $key): bool
+    public function set(string $flagKey): bool
     {
-        $flag = $this->getFlagPath($key);
-        $path = $this->directoryList->getMagentoRoot() . '/' . $flag;
+        $flagPath = $this->getFlagPath($flagKey);
+        $path = $this->directoryList->getMagentoRoot() . '/' . $flagPath;
 
         if ($this->file->touch($path)) {
-            $this->logger->info('Set flag: ' . $flag);
+            $this->logger->info('Set flag: ' . $flagPath);
 
             return true;
         }
 
         $this->logger->notice(sprintf(
             'Cannot create flag %s',
-            $key
+            $flagKey
         ));
 
         return false;
@@ -113,26 +117,28 @@ class Manager
     /**
      * Deletes a flag from the filesystem.
      *
-     * @param string $key
+     * @param string $flagKey
      * @return bool Returns true if file does not exist or was removed by this method
-     * @throws ConfigurationMismatchException
+     * @throws \RuntimeException If flag with given key is not registered
      */
-    public function delete(string $key): bool
+    public function delete(string $flagKey): bool
     {
-        $flag = $this->getFlagPath($key);
+        $flagPath = $this->getFlagPath($flagKey);
 
-        if (!$this->exists($key)) {
-            $this->logger->debug(sprintf('Flag %s has already been deleted.', $flag));
-
+        if (!$this->exists($flagKey)) {
+            $this->logger->debug(sprintf('Flag %s has already been deleted.', $flagPath));
             return true;
         }
 
-        $path = $this->directoryList->getMagentoRoot() . '/' . $flag;
+        $path = $this->directoryList->getMagentoRoot() . '/' . $flagPath;
 
-        if ($this->file->deleteFile($path)) {
-            $this->logger->info('Deleting flag: ' . $flag);
-
-            return true;
+        try {
+            if ($this->file->deleteFile($path)) {
+                $this->logger->info('Deleting flag: ' . $flagPath);
+                return true;
+            }
+        } catch (FileSystemException $e) {
+            $this->logger->notice($e->getMessage());
         }
 
         return false;
@@ -141,21 +147,18 @@ class Manager
     /**
      * Returns relative flag path by given flag key.
      *
-     * @param string $key
+     * @param string $flagKey
      * @return string
-     * @throws ConfigurationMismatchException If flag with given key is not registered
+     * @throws \RuntimeException If flag with given key is not registered
      */
-    public function getFlagPath(string $key): string
+    public function getFlagPath(string $flagKey): string
     {
-        $flag = $this->pool->get($key);
+        $flagPath = $this->flagPool->get($flagKey);
 
-        if (!$flag) {
-            throw new ConfigurationMismatchException(sprintf(
-                'Flag with key %s is not registered in pool',
-                $key
-            ));
+        if (!$flagPath) {
+            throw new \RuntimeException(sprintf('Flag with key %s is not registered in flagPool', $flagKey));
         }
 
-        return $flag;
+        return $flagPath;
     }
 }

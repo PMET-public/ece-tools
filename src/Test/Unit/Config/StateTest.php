@@ -3,13 +3,10 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Config;
 
-use Magento\MagentoCloud\App\GenericException;
-use Magento\MagentoCloud\Config\Magento\Env\ReaderInterface;
-use Magento\MagentoCloud\Config\Magento\Env\WriterInterface;
+use Magento\MagentoCloud\Config\Deploy\Reader;
+use Magento\MagentoCloud\Config\Deploy\Writer;
 use Magento\MagentoCloud\DB\ConnectionInterface;
 use Psr\Log\LoggerInterface;
 use Magento\MagentoCloud\Config\State;
@@ -34,12 +31,12 @@ class StateTest extends TestCase
     private $connectionMock;
 
     /**
-     * @var ReaderInterface|Mock
+     * @var Reader|Mock
      */
     private $readerMock;
 
     /**
-     * @var WriterInterface|Mock
+     * @var Writer|Mock
      */
     private $writerMock;
 
@@ -53,10 +50,12 @@ class StateTest extends TestCase
      */
     protected function setUp()
     {
-        $this->loggerMock = $this->getMockForAbstractClass(LoggerInterface::class);
-        $this->connectionMock = $this->getMockForAbstractClass(ConnectionInterface::class);
-        $this->readerMock = $this->getMockForAbstractClass(ReaderInterface::class);
-        $this->writerMock = $this->getMockForAbstractClass(WriterInterface::class);
+        $this->loggerMock = $this->getMockBuilder(LoggerInterface::class)
+            ->getMockForAbstractClass();
+        $this->connectionMock = $this->getMockBuilder(ConnectionInterface::class)
+            ->getMockForAbstractClass();
+        $this->readerMock = $this->createMock(Reader::class);
+        $this->writerMock = $this->createMock(Writer::class);
 
         $this->state = new State(
             $this->loggerMock,
@@ -94,13 +93,11 @@ class StateTest extends TestCase
 
     /**
      * @param array $tables
+     * @expectedException \Exception
      * @dataProvider tablesWithExceptionDataProvider
-     * @throws GenericException
      */
     public function testIsInstalledTablesWithException($tables)
     {
-        $this->expectException(\Exception::class);
-
         $this->loggerMock->expects($this->once())
             ->method('info')
             ->with('Checking if db exists and has tables');

@@ -8,12 +8,14 @@ declare(strict_types=1);
 namespace Magento\MagentoCloud\Config\Magento;
 
 use Magento\MagentoCloud\Package\MagentoVersion;
+use Magento\MagentoCloud\Package\UndefinedPackageException;
+use Magento\MagentoCloud\Shell\ShellException;
 use Magento\MagentoCloud\Shell\ShellFactory;
 
 /**
  * Retrieves a value by running bin/magento config:show
  */
-class System implements SystemInterface
+class System
 {
     /**
      * @var ShellFactory
@@ -36,22 +38,25 @@ class System implements SystemInterface
     }
 
     /**
-     * Read a value from bin/magento config:show command.
+     * Read a value from bin/magento config:show and compare it to an expected value.
      *
-     * @inheritDoc
+     * @param string $key
+     * @return string|null
+     *
+     * @throws UndefinedPackageException
      */
-    public function get(string $key): ?string
+    public function get(string $key)
     {
-        try {
-            if (!$this->magentoVersion->isGreaterOrEqual('2.2.0')) {
-                return null;
-            }
+        if (!$this->magentoVersion->isGreaterOrEqual('2.2.0')) {
+            return null;
+        }
 
+        try {
             $magentoShell = $this->shellFactory->create(ShellFactory::STRATEGY_MAGENTO_SHELL);
             $process = $magentoShell->execute('config:show', [$key]);
 
             return $process->getOutput() ?? null;
-        } catch (\Exception $exception) {
+        } catch (ShellException $shellException) {
             return null;
         }
     }

@@ -9,8 +9,6 @@ namespace Magento\MagentoCloud\Shell;
 
 /**
  * Provides access to system shell operations.
- *
- * @api
  */
 interface ShellInterface
 {

@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config;
 
 /**
@@ -57,13 +55,13 @@ class ConfigMerger
      * Merge two configs if merging is required, otherwise return $baseConfig without changes.
      *
      * @param array $baseConfig
-     * @param array $customConfig
+     * @param array $configToMerge
      * @return array
      */
-    public function merge(array $baseConfig, array $customConfig): array
+    public function mergeConfigs(array $baseConfig, array $configToMerge): array
     {
-        if ($this->isMergeRequired($customConfig)) {
-            return array_replace_recursive($baseConfig, $this->clear($customConfig));
+        if ($this->isMergeRequired($configToMerge)) {
+            return array_replace_recursive($baseConfig, $this->clear($configToMerge));
         }
 
         return $baseConfig;

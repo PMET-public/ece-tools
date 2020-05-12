@@ -26,5 +26,4 @@
     <rule ref="Squiz.Commenting.ClassComment" />
 
     <exclude-pattern>_files</exclude-pattern>
-    <exclude-pattern>_file</exclude-pattern>
 </ruleset>

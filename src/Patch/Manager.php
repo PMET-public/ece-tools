@@ -3,17 +3,18 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Patch;
 
 use Magento\MagentoCloud\Config\GlobalSection;
+use Magento\MagentoCloud\Filesystem\DirectoryList;
+use Magento\MagentoCloud\Filesystem\FileList;
+use Magento\MagentoCloud\Filesystem\Driver\File;
 use Magento\MagentoCloud\Shell\ShellException;
 use Magento\MagentoCloud\Shell\ShellInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Wrapper for applying required patches.
+ * Wrapper form applying required patches.
  */
 class Manager
 {
@@ -28,23 +29,48 @@ class Manager
     private $shell;
 
     /**
+     * @var File
+     */
+    private $file;
+
+    /**
+     * @var DirectoryList
+     */
+    private $directoryList;
+
+    /**
      * @var GlobalSection
      */
     private $globalSection;
 
     /**
+     * @var FileList
+     */
+    private $fileList;
+
+    /**
      * @param LoggerInterface $logger
      * @param ShellInterface $shell
+     * @param File $file
+     * @param DirectoryList $directoryList
      * @param GlobalSection $globalSection
+     * @param FileList $fileList
      */
     public function __construct(
         LoggerInterface $logger,
         ShellInterface $shell,
-        GlobalSection $globalSection
+        File $file,
+        DirectoryList $directoryList,
+        GlobalSection $globalSection,
+        FileList $fileList
     ) {
+
         $this->logger = $logger;
         $this->shell = $shell;
+        $this->file = $file;
+        $this->directoryList = $directoryList;
         $this->globalSection = $globalSection;
+        $this->fileList = $fileList;
     }
 
     /**
@@ -52,8 +78,14 @@ class Manager
      *
      * @throws ShellException
      */
-    public function apply(): void
+    public function apply()
     {
+        $this->file->copy(
+            $this->fileList->getFrontStaticDist(),
+            $this->directoryList->getMagentoRoot() . '/pub/front-static.php'
+        );
+        $this->logger->info('File "front-static.php" was copied');
+
         $this->logger->notice('Applying patches');
 
         $command = 'php ./vendor/bin/ece-patches apply';
@@ -63,9 +95,10 @@ class Manager
         }
 
         try {
-            $this->shell->execute($command);
+            $this->shell->execute($command)->getOutput();
         } catch (ShellException $exception) {
             $this->logger->error($exception->getMessage());
+
             throw  $exception;
         }
 

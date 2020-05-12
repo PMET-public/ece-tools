@@ -3,12 +3,10 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config\Stage\Deploy;
 
-use Magento\MagentoCloud\Config\ConfigException;
-use Magento\MagentoCloud\Config\Environment\ReaderInterface as EnvironmentReader;
+use Magento\MagentoCloud\Config\Environment;
+use Magento\MagentoCloud\Config\Environment\Reader as EnvironmentReader;
 use Magento\MagentoCloud\Config\Schema;
 use Magento\MagentoCloud\Config\Stage\DeployInterface;
 use Magento\MagentoCloud\Config\StageConfigInterface;
@@ -34,20 +32,28 @@ class MergedConfig
     private $mergedConfig;
 
     /**
+     * @var Environment
+     */
+    private $environment;
+
+    /**
      * @var Schema
      */
     private $schema;
 
     /**
+     * @param Environment $environment
      * @param EnvironmentReader $environmentReader
      * @param EnvironmentConfig $environmentConfig
      * @param Schema $schema
      */
     public function __construct(
+        Environment $environment,
         EnvironmentReader $environmentReader,
         EnvironmentConfig $environmentConfig,
         Schema $schema
     ) {
+        $this->environment = $environment;
         $this->environmentReader = $environmentReader;
         $this->environmentConfig = $environmentConfig;
         $this->schema = $schema;
@@ -57,7 +63,7 @@ class MergedConfig
      * Returns all merged configuration for deploy stage.
      *
      * @return array
-     * @throws ConfigException If the configuration file can't be read or can't be parsed
+     * @throws \RuntimeException If the configuration file can't be read or can't be parsed
      */
     public function get(): array
     {
@@ -75,7 +81,7 @@ class MergedConfig
 
             return $this->mergedConfig;
         } catch (\Exception $exception) {
-            throw new ConfigException(
+            throw new \RuntimeException(
                 $exception->getMessage(),
                 $exception->getCode(),
                 $exception

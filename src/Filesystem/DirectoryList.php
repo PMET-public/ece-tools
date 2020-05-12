@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Filesystem;
 
 use Magento\MagentoCloud\Package\MagentoVersion;
@@ -18,20 +16,20 @@ class DirectoryList
     /**
      * Keys of directory configuration.
      */
-    private const PATH = 'path';
+    const PATH = 'path';
 
     /**
      * Directory codes.
      */
-    public const DIR_INIT = 'init';
-    public const DIR_VAR = 'var';
-    public const DIR_LOG = 'log';
-    public const DIR_GENERATED_CODE = 'code';
-    public const DIR_GENERATED_METADATA = 'metadata';
-    public const DIR_ETC = 'etc';
-    public const DIR_MEDIA = 'media';
-    public const DIR_VIEW_PREPROCESSED = 'view-preprocessed';
-    public const DIR_STATIC = 'static';
+    const DIR_INIT = 'init';
+    const DIR_VAR = 'var';
+    const DIR_LOG = 'log';
+    const DIR_GENERATED_CODE = 'code';
+    const DIR_GENERATED_METADATA = 'metadata';
+    const DIR_ETC = 'etc';
+    const DIR_MEDIA = 'media';
+    const DIR_VIEW_PREPROCESSED = 'view-preprocessed';
+    const DIR_STATIC = 'static';
 
     /**
      * @var string
@@ -212,14 +210,6 @@ class DirectoryList
         }
 
         return $config;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPatches(): string
-    {
-        return $this->getRoot() . '/patches';
     }
 
     /**

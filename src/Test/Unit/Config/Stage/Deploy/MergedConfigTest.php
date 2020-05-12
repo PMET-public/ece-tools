@@ -3,11 +3,9 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Config\Stage\Deploy;
 
-use Magento\MagentoCloud\Config\ConfigException;
+use Magento\MagentoCloud\Config\Environment;
 use Magento\MagentoCloud\Config\Environment\Reader as EnvironmentReader;
 use Magento\MagentoCloud\Config\Schema;
 use Magento\MagentoCloud\Config\Stage\Deploy;
@@ -40,6 +38,11 @@ class MergedConfigTest extends TestCase
     private $environmentConfigMock;
 
     /**
+     * @var Environment|MockObject
+     */
+    private $environmentMock;
+
+    /**
      * @var Schema|MockObject
      */
     private $schemaMock;
@@ -49,11 +52,13 @@ class MergedConfigTest extends TestCase
      */
     protected function setUp()
     {
+        $this->environmentMock = $this->createMock(Environment::class);
         $this->environmentReaderMock = $this->createMock(EnvironmentReader::class);
         $this->environmentConfigMock = $this->createMock(EnvironmentConfig::class);
         $this->schemaMock = $this->createMock(Schema::class);
 
         $this->mergedConfig = new MergedConfig(
+            $this->environmentMock,
             $this->environmentReaderMock,
             $this->environmentConfigMock,
             $this->schemaMock
@@ -66,10 +71,8 @@ class MergedConfigTest extends TestCase
      * @param array $envVarConfig
      * @param array $expectedConfig
      * @dataProvider getDataProvider
-     *
-     * @throws ConfigException
      */
-    public function testGet(array $defaults, array $envConfig, array $envVarConfig, array $expectedConfig): void
+    public function testGet(array $defaults, array $envConfig, array $envVarConfig, array $expectedConfig)
     {
         $this->schemaMock->expects($this->once())
             ->method('getDefaults')
@@ -90,6 +93,7 @@ class MergedConfigTest extends TestCase
 
     /**
      * @return array
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
     public function getDataProvider(): array
     {
@@ -176,13 +180,11 @@ class MergedConfigTest extends TestCase
     }
 
     /**
-     * @throws ConfigException
+     * @expectedExceptionMessage File system error
+     * @expectedException \RuntimeException
      */
-    public function testGetWithFileSystemException(): void
+    public function testGetWithFileSystemException()
     {
-        $this->expectException(ConfigException::class);
-        $this->expectExceptionMessage('File system error');
-
         $this->environmentReaderMock->expects($this->once())
             ->method('read')
             ->willThrowException(new FileSystemException('File system error'));
@@ -191,13 +193,11 @@ class MergedConfigTest extends TestCase
     }
 
     /**
-     * @throws ConfigException
+     * @expectedExceptionMessage File system error
+     * @expectedException \RuntimeException
      */
-    public function testGetWithParseException(): void
+    public function testGetWithParseException()
     {
-        $this->expectException(ConfigException::class);
-        $this->expectExceptionMessage('File system error');
-
         $this->environmentReaderMock->expects($this->once())
             ->method('read')
             ->willThrowException(new ParseException('File system error'));

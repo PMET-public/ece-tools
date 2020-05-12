@@ -9,7 +9,6 @@ namespace Magento\MagentoCloud\Test\Functional\Acceptance;
 
 /**
  * General Cest
- * @SuppressWarnings(PHPMD.NumberOfChildren)
  */
 abstract class AbstractCest
 {
@@ -25,7 +24,7 @@ abstract class AbstractCest
     /**
      * @param \CliTester $I
      */
-    public function _after(\CliTester $I): void
+    public function _after(\CliTester $I)
     {
         $I->stopEnvironment();
         $I->removeDockerCompose();

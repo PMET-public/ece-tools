@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config\Database;
 
 use Magento\MagentoCloud\Config\Stage\DeployInterface;
@@ -74,6 +72,6 @@ class ResourceConfig implements ConfigInterface
             return $this->mergedConfig = $this->configMerger->clear($envRsConfig);
         }
 
-        return $this->mergedConfig = $this->configMerger->merge($this->rsConfig, $envRsConfig);
+        return $this->mergedConfig = $this->configMerger->mergeConfigs($this->rsConfig, $envRsConfig);
     }
 }

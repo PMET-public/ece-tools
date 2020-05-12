@@ -7,11 +7,26 @@ declare(strict_types=1);
 
 namespace Magento\MagentoCloud\Shell;
 
+use Magento\MagentoCloud\App\ContainerInterface;
+
 /**
  * Creates instance of ProcessInterface
  */
 class ProcessFactory
 {
+    /**
+     * @var ContainerInterface
+     */
+    private $container;
+
+    /**
+     * @param ContainerInterface $container
+     */
+    public function __construct(ContainerInterface $container)
+    {
+        $this->container = $container;
+    }
+
     /**
      * Creates instance of Process
      *
@@ -21,12 +36,6 @@ class ProcessFactory
      */
     public function create(array $params): ProcessInterface
     {
-        return new Process(
-            $params['command'],
-            $params['cwd'],
-            null,
-            null,
-            $params['timeout']
-        );
+        return $this->container->create(Process::class, $params);
     }
 }

@@ -74,12 +74,10 @@ class ApplicationTest extends TestCase
         Command\ModuleRefresh::NAME => Command\ModuleRefresh::class,
         Command\Wizard\IdealState::NAME => Command\Wizard\IdealState::class,
         Command\Wizard\MasterSlave::NAME => Command\Wizard\MasterSlave::class,
+        Command\Docker\Build::NAME => Command\Docker\Build::class,
+        Command\Docker\GenerateDist::NAME => Command\Docker\GenerateDist::class,
         Command\CronKill::NAME => Command\CronKill::class,
-        Command\CronEnable::NAME => Command\CronEnable::class,
-        Command\CronDisable::NAME => Command\CronDisable::class,
         Command\ConfigShow::NAME => Command\ConfigShow::class,
-        Command\RunCommand::NAME => Command\RunCommand::class,
-        Command\GenerateSchema::NAME => Command\GenerateSchema::class,
     ];
 
     /**
@@ -126,7 +124,7 @@ class ApplicationTest extends TestCase
         );
     }
 
-    public function testHasCommand(): void
+    public function testHasCommand()
     {
         foreach (array_keys($this->classMap) as $name) {
             $this->assertTrue(
@@ -135,7 +133,7 @@ class ApplicationTest extends TestCase
         }
     }
 
-    public function testGetName(): void
+    public function testGetName()
     {
         $this->assertSame(
             $this->applicationName,
@@ -143,7 +141,7 @@ class ApplicationTest extends TestCase
         );
     }
 
-    public function testGetVersion(): void
+    public function testGetVersion()
     {
         $this->assertSame(
             $this->applicationVersion,
@@ -151,7 +149,7 @@ class ApplicationTest extends TestCase
         );
     }
 
-    public function testGetContainer(): void
+    public function testGetContainer()
     {
         $this->application->getContainer();
     }

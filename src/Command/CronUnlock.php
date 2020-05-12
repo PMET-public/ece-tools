@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Command;
 
 use Magento\MagentoCloud\Cron\JobUnlocker;
@@ -17,8 +15,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * CLI command for unlocking cron jobs that stuck in "running" state.
- *
- * @api
  */
 class CronUnlock extends Command
 {

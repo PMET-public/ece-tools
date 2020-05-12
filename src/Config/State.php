@@ -3,13 +3,11 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Config;
 
 use Magento\MagentoCloud\App\GenericException;
-use Magento\MagentoCloud\Config\Magento\Env\ReaderInterface;
-use Magento\MagentoCloud\Config\Magento\Env\WriterInterface;
+use Magento\MagentoCloud\Config\Deploy\Reader;
+use Magento\MagentoCloud\Config\Deploy\Writer;
 use Magento\MagentoCloud\DB\ConnectionInterface;
 use Psr\Log\LoggerInterface;
 
@@ -29,26 +27,26 @@ class State
     private $connection;
 
     /**
-     * @var ReaderInterface
+     * @var Reader
      */
     private $reader;
 
     /**
-     * @var WriterInterface
+     * @var Writer
      */
     private $writer;
 
     /**
      * @param LoggerInterface $logger
      * @param ConnectionInterface $connection
-     * @param ReaderInterface $reader
-     * @param WriterInterface $writer
+     * @param Reader $reader
+     * @param Writer $writer
      */
     public function __construct(
         LoggerInterface $logger,
         ConnectionInterface $connection,
-        ReaderInterface $reader,
-        WriterInterface $writer
+        Reader $reader,
+        Writer $writer
     ) {
         $this->logger = $logger;
         $this->connection = $connection;

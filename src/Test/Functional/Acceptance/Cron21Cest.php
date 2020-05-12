@@ -8,7 +8,7 @@ declare(strict_types=1);
 namespace Magento\MagentoCloud\Test\Functional\Acceptance;
 
 /**
- * @group php71
+ * @group php70
  */
 class Cron21Cest extends CronCest
 {
@@ -19,11 +19,11 @@ class Cron21Cest extends CronCest
     {
         return [
             [
-                'version' => '2.1.16',
+                'version' => '2.1.4',
                 'variables' => [
                     'MAGENTO_CLOUD_VARIABLES' => [
                         'ADMIN_EMAIL' => 'admin@example.com',
-                        'ADMIN_LOCALE' => 'ar_KW'
+                        'ADMIN_LOCALE' => 'fr_FR'
                     ],
                 ],
             ],

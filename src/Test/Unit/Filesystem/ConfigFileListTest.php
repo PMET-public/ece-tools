@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Filesystem;
 
 use Magento\MagentoCloud\Filesystem\ConfigFileList;
@@ -67,10 +65,5 @@ class ConfigFileListTest extends TestCase
     public function testGetToolsConfig()
     {
         $this->assertSame('magento_root/.magento.env.yaml', $this->configFileList->getEnvConfig());
-    }
-
-    public function testGetErrorReportConfig()
-    {
-        $this->assertSame('magento_root/pub/errors/local.xml', $this->configFileList->getErrorReportConfig());
     }
 }

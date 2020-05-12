@@ -3,14 +3,10 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Config;
 
-use Magento\MagentoCloud\Config\Magento\Shared\ReaderInterface;
-use Magento\MagentoCloud\Config\Magento\Shared\WriterInterface;
+use Magento\MagentoCloud\Config\ConfigInterface;
 use Magento\MagentoCloud\Config\Module;
-use Magento\MagentoCloud\Filesystem\FileSystemException;
 use Magento\MagentoCloud\Shell\MagentoShell;
 use Magento\MagentoCloud\Shell\ShellFactory;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -27,14 +23,9 @@ class ModuleTest extends TestCase
     private $module;
 
     /**
-     * @var ReaderInterface|MockObject
+     * @var ConfigInterface|MockObject
      */
-    private $readerMock;
-
-    /**
-     * @var WriterInterface|MockObject
-     */
-    private $writerMock;
+    private $configMock;
 
     /**
      * @var MagentoShell|MockObject
@@ -46,10 +37,8 @@ class ModuleTest extends TestCase
      */
     protected function setUp()
     {
-        $this->readerMock = $this->getMockForAbstractClass(ReaderInterface::class);
-        $this->writerMock = $this->getMockForAbstractClass(WriterInterface::class);
+        $this->configMock = $this->getMockForAbstractClass(ConfigInterface::class);
         $this->magentoShellMock = $this->createMock(MagentoShell::class);
-
         /** @var ShellFactory|MockObject $shellFactoryMock */
         $shellFactoryMock = $this->createMock(ShellFactory::class);
         $shellFactoryMock->expects($this->once())
@@ -57,34 +46,30 @@ class ModuleTest extends TestCase
             ->willReturn($this->magentoShellMock);
 
         $this->module = new Module(
-            $this->readerMock,
-            $this->writerMock,
+            $this->configMock,
             $shellFactoryMock
         );
     }
 
-    /**
-     * @throws FileSystemException
-     */
-    public function testRefreshWithMissingModuleConfig(): void
+    public function testRefreshWithMissingModuleConfig()
     {
-        $this->readerMock->expects($this->exactly(2))
-            ->method('read')
+        $this->configMock->expects($this->exactly(2))
+            ->method('get')
+            ->with('modules')
             ->willReturnOnConsecutiveCalls(
-                [],
+                null,
                 [
-                    'modules' => [
-                        'Magento_Module1' => 1,
-                        'Magento_Module2' => 1,
-                    ]
+                    'Magento_Module1' => 1,
+                    'Magento_Module2' => 1,
                 ]
             );
+        $this->configMock->expects($this->once())
+            ->method('reset');
         $this->magentoShellMock->expects($this->once())
             ->method('execute')
             ->with('module:enable --all');
-        $this->writerMock->expects($this->once())
-            ->method('update')
-            ->with(['modules' => []]);
+        $this->configMock->expects($this->never())
+            ->method('update');
 
         $this->assertEquals(
             [
@@ -95,48 +80,37 @@ class ModuleTest extends TestCase
         );
     }
 
-    /**
-     * @throws FileSystemException
-     */
-    public function testRefreshWithNewModules(): void
+    public function testRefreshWithNewModules()
     {
-        $this->readerMock->expects($this->exactly(2))
-            ->method('read')
+        $this->configMock->expects($this->exactly(2))
+            ->method('get')
+            ->with('modules')
             ->willReturnOnConsecutiveCalls(
                 [
-                    'modules' => [
-                        'Magento_Module1' => 1,
-                        'Magento_Module2' => 0,
-                        'Magento_Module3' => 1,
-                    ],
+                    'Magento_Module1' => 1,
+                    'Magento_Module2' => 0,
+                    'Magento_Module3' => 1,
                 ],
                 [
-                    'modules' => [
-                        'Magento_Module1' => 1,
-                        'Magento_Module2' => 1,
-                        'Magento_Module3' => 1,
-                        'Magento_Module4' => 1,
-                        'Magento_Module5' => 1,
-                    ],
+                    'Magento_Module1' => 1,
+                    'Magento_Module2' => 1,
+                    'Magento_Module3' => 1,
+                    'Magento_Module4' => 1,
+                    'Magento_Module5' => 1,
                 ]
             );
         $this->magentoShellMock->expects($this->once())
             ->method('execute')
             ->with('module:enable --all');
-        $this->writerMock->expects($this->exactly(2))
+        $this->configMock->expects($this->once())
+            ->method('reset');
+        $this->configMock->expects($this->once())
             ->method('update')
-            ->withConsecutive(
-                [['modules' => []]],
-                [
-                    [
-                        'modules' => [
-                            'Magento_Module1' => 1,
-                            'Magento_Module2' => 0,
-                            'Magento_Module3' => 1,
-                        ]
-                    ]
-                ]
-            );
+            ->with(['modules' => [
+                'Magento_Module1' => 1,
+                'Magento_Module2' => 0,
+                'Magento_Module3' => 1,
+            ]]);
 
         $this->assertEquals(
             [

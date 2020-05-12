@@ -3,11 +3,8 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Util;
 
-use Magento\MagentoCloud\App\GenericException;
 use Magento\MagentoCloud\Config\Stage\DeployInterface;
 use Magento\MagentoCloud\Filesystem\DirectoryList;
 use Magento\MagentoCloud\Filesystem\Driver\File;
@@ -79,9 +76,6 @@ class MaintenanceModeSwitcherTest extends TestCase
         );
     }
 
-    /**
-     * @throws GenericException
-     */
     public function testEnable()
     {
         $this->stageConfigMock->expects($this->once())
@@ -104,9 +98,6 @@ class MaintenanceModeSwitcherTest extends TestCase
         $this->maintenanceModeSwitcher->enable();
     }
 
-    /**
-     * @throws GenericException
-     */
     public function testEnableCommandException()
     {
         $this->stageConfigMock->expects($this->once())
@@ -133,9 +124,6 @@ class MaintenanceModeSwitcherTest extends TestCase
         $this->maintenanceModeSwitcher->enable();
     }
 
-    /**
-     * @throws GenericException
-     */
     public function testDisable()
     {
         $this->stageConfigMock->expects($this->once())
@@ -152,11 +140,12 @@ class MaintenanceModeSwitcherTest extends TestCase
         $this->maintenanceModeSwitcher->disable();
     }
 
+    /**
+     * @expectedException \RuntimeException
+     * @expectedExceptionMessage command error
+     */
     public function testDisableCommandException()
     {
-        $this->expectException(GenericException::class);
-        $this->expectExceptionMessage('command error');
-
         $this->stageConfigMock->expects($this->once())
             ->method('get')
             ->with(DeployInterface::VAR_VERBOSE_COMMANDS)

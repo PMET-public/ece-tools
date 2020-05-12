@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Test\Unit\Command;
 
 use Magento\MagentoCloud\Command\CronUnlock;
@@ -108,11 +106,12 @@ class CronUnlockTest extends TestCase
         $this->assertSame(0, $tester->getStatusCode());
     }
 
+    /**
+     * @expectedException \Exception
+     * @expectedExceptionMessage Some error
+     */
     public function testExecuteWithException()
     {
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Some error');
-
         $this->loggerMock->expects($this->once())
             ->method('info')
             ->with('Starting unlocking.');

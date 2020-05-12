@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Package;
 
 use Composer\Semver\Comparator;
@@ -16,8 +14,6 @@ use Magento\MagentoCloud\Config\GlobalSection;
  */
 class MagentoVersion
 {
-    public const MIN_VERSION = '2.1.14';
-
     /**
      * @var Manager
      */

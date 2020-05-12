@@ -8,7 +8,7 @@ declare(strict_types=1);
 namespace Magento\MagentoCloud\Test\Functional\Acceptance;
 
 /**
- * @group php71
+ * @group php70
  */
 class Upgrade21Cest extends UpgradeCest
 {
@@ -18,7 +18,7 @@ class Upgrade21Cest extends UpgradeCest
     protected function testProvider()
     {
         return [
-            ['from' => '2.1.16', 'to' => '2.2.0']
+            ['from' => '2.1.4', 'to' => '2.2.0']
         ];
     }
 }

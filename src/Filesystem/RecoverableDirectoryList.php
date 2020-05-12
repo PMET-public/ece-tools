@@ -3,8 +3,6 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
-declare(strict_types=1);
-
 namespace Magento\MagentoCloud\Filesystem;
 
 use Magento\MagentoCloud\Config\Environment;
@@ -84,6 +82,7 @@ class RecoverableDirectoryList
      */
     public function getList(): array
     {
+        $isSymlinkEnabled = $this->stageConfig->get(DeployInterface::VAR_STATIC_CONTENT_SYMLINK);
         $staticCopyStrategy = $this->stageConfig->get(DeployInterface::VAR_CLEAN_STATIC_FILES)
             ? StrategyInterface::STRATEGY_COPY
             : StrategyInterface::STRATEGY_COPY_SUB_FOLDERS;
@@ -111,7 +110,8 @@ class RecoverableDirectoryList
             }
             $recoverableDirs[] = [
                 self::OPTION_DIRECTORY => $this->directoryList->getPath(DirectoryList::DIR_STATIC, true),
-                self::OPTION_STRATEGY => StrategyInterface::STRATEGY_SUB_SYMLINK,
+                self::OPTION_STRATEGY => $isSymlinkEnabled ?
+                    StrategyInterface::STRATEGY_SUB_SYMLINK : $staticCopyStrategy,
             ];
         }
 
