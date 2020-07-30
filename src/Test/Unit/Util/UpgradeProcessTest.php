@@ -107,7 +107,7 @@ class UpgradeProcessTest extends TestCase
                 ['echo \'Updating time: \'$(date) | tee -a ' . $installUpgradeLog],
                 [
                     '/bin/bash -c "set -o pipefail; php ./bin/magento setup:upgrade '
-                    . '--keep-generated --ansi --no-interaction -v | tee -a '
+                    . '--keep-generated --ansi --no-interaction -v  2>&1 | tee -a '
                     . $installUpgradeLog . '"'
                 ]
             );

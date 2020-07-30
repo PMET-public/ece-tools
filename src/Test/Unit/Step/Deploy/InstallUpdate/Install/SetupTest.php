@@ -100,7 +100,7 @@ class SetupTest extends TestCase
             ->method('execute')
             ->withConsecutive(
                 ['echo \'Installation time: \'$(date) | tee -a ' . $installUpgradeLog],
-                ['/bin/bash -c "set -o pipefail; magento install command | tee -a /tmp/log.log"']
+                ['/bin/bash -c "set -o pipefail; magento install command 2>&1 | tee -a /tmp/log.log"']
             );
 
         $this->step->execute();
