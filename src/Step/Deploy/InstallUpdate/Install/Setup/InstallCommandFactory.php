@@ -174,7 +174,7 @@ class InstallCommandFactory
             '--use-secure-admin' => '1',
             '--use-rewrites' => '1',
             '--currency' => $this->adminData->getDefaultCurrency(),
-            '--base-url' => $urlUnSecure,
+            '--base-url' => $urlSecure,
             '--base-url-secure' => $urlSecure,
             '--backend-frontname' => $adminUrl,
             '--language' => $this->adminData->getLocale(),
